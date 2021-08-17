@@ -140,20 +140,31 @@ copy() {
 
 	[ ! -d "$_dest_dir" ] && mkdir -p "$_dest_dir"
 
-	# checksum src, and copy to temp file @ dest
 	_src_chksum="$(md5sum "$_src" | cut -d' ' -f1)"
-	_dest_tmp="${_dest}".tmp
-	cp "$_src" "$_dest_tmp"
-	_dest_chksum="$(md5sum "$_dest_tmp" | cut -d' ' -f1)"
 
+	# does target have enough free space to copy atomically?
+	_size=$(get_size_of_files "$_src")
+	target_free_space=$(get_free_space "$_dest_dir")
+	if [ "$_size" -ge "$target_free_space" ]; then
+		echo "*NOT* copying file atomically (not enough free space at target): $f"
+		_dest_tmp="$_dest"
+	else
+		# copying atomically, by copying to a temp file in the target filesystem first
+		_dest_tmp="${_dest}".tmp
+	fi
+
+	cp "$_src" "$_dest_tmp"
 	sync "$_dest_dir"
 
+	_dest_chksum="$(md5sum "$_dest_tmp" | cut -d' ' -f1)"
+
 	if [ "$_src_chksum" != "$_dest_chksum" ]; then
-		echo "Checksums do not match: $_src --> ${_dest}.tmp"
+		echo "Checksums do not match: $_src --> $_dest_tmp"
 		echo "Have: $_src_chksum, expected: $_dest_chksum"
 		exit 1
 	fi
 
+	# if not copying atomically, this is a noop
 	mv "$_dest_tmp" "$_dest"
 
 	sync "$_dest_dir"
