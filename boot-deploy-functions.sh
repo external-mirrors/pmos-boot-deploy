@@ -358,14 +358,58 @@ get_size_of_files() {
 	echo "$ret"
 }
 
+# Check that the the given list of files can be copied to the destination, $output_dir,
+# atomically
+# $1: list of files to check
 check_destination_free_space() {
-	src_size=$(get_size_of_files "$files_to_copy")
+	# This uses two checks to test whether the destination filesystem has
+	# enough free space for copying the given list of files atomically. Since
+	# files may exist in the target dir with the same name as those that are to
+	# be copied, and files are copied one at a time, it's possible (and almost
+	# expected) that the free space at the destination is less than the total
+	# size of the files to be copied, so the size delta is checked and then
+	# each file is checked to make sure the target dir can hold the new copy of
+	# it before the old file is atomically replaced.
+
+	echo "==> Checking free space at $output_dir"
+	files="$1"
+
+	# First check is that target has enough space for all new files/sizes
+	# 1) get size of new files
+	total_new_size=$(get_size_of_files "$files")
+
+	# 2) get size of old files at destination
+	total_old_size=0
+	for f in $files; do
+		if [ -f "$output_dir/$(basename "$f")" ]; then
+			total_old_size=$((total_old_size+$(get_size_of_files "$f")))
+		fi
+	done
+
+	# 3) subtract old size from new size
+	total_diff_size=$((total_new_size-total_old_size))
+
+	# 4) get free space at destination
 	target_free_space=$(get_free_space "$output_dir")
 
-	if [ "$src_size" -ge "$target_free_space" ]; then
+	# does the target have enough free space for diff size of all new files?
+	if [ "$total_diff_size" -ge "$target_free_space" ]; then
 		echo "Destination filesystem does not have enough free space!"
-		echo "Need $src_size kilobytes, have $target_free_space kilobytes"
+		echo "Need $total_diff_size kilobytes, have $target_free_space kilobytes"
 		exit 1
 	fi
+
+	# Second check is that each file can be replaced atomically
+	# for each new file:
+	for f in $files; do
+		# 1) get size of new file
+		f_size=$(get_size_of_files "$f")
+		# 2) does target have enough free space for the new file size?
+		if [ "$f_size" -ge "$target_free_space" ]; then
+			echo "Destination filesystem does not have enough free space to copy this file atomically: $f"
+			echo "Need $f_size kilobytes, have $target_free_space kilobytes"
+			exit 1
+		fi
+	done
 	echo "... OK!"
 }

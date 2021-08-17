@@ -31,7 +31,7 @@ for f in $additional_files; do
 	files_to_copy="$files_to_copy $input_dir/$f"
 done
 
-check_destination_free_space
+check_destination_free_space "$files_to_copy"
 
 # copy files to destination
 for f in $files_to_copy; do
