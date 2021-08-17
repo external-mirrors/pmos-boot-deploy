@@ -361,8 +361,7 @@ flash_updated_boot_parts() {
 	fi
 
 	echo "==> Flashing boot image"
-	flavor=$(uname -r | sed "s/^[^-]*-//")
-	pmos-update-kernel "$flavor"
+	pmos-update-kernel
 }
 
 # $1: list of files to get total size of, in kilobytes
