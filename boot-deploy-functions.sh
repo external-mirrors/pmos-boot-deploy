@@ -419,7 +419,6 @@ check_destination_free_space() {
 		if [ "$f_size" -ge "$target_free_space" ]; then
 			echo "Destination filesystem does not have enough free space to copy this file atomically: $f"
 			echo "Need $f_size kilobytes, have $target_free_space kilobytes"
-			exit 1
 		fi
 	done
 	echo "... OK!"
