@@ -164,8 +164,11 @@ copy() {
 		exit 1
 	fi
 
-	# if not copying atomically, this is a noop
-	mv "$_dest_tmp" "$_dest"
+	# if not copying atomically, these are set to the same file. mv'ing
+	# triggers a warning from mv cmd, so just skip it
+	if [ "$_dest_tmp" != "$_dest" ]; then
+		mv "$_dest_tmp" "$_dest"
+	fi
 
 	sync "$_dest_dir"
 }
