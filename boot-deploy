@@ -362,7 +362,7 @@ check_destination_free_space() {
 	target_free_space=$(get_free_space "$output_dir")
 	if [ "$src_size" -ge "$target_free_space" ]; then
 		echo "Destination filesystem does not have enough free space!"
-		echo "Need $src_size bytes, have $target_free_space bytes"
+		echo "Need $src_size kilobytes, have $target_free_space kilobytes"
 		exit 1
 	fi
 	echo "... OK!"
