@@ -183,7 +183,7 @@ append_or_copy_dtb() {
 			echo "ERROR: File not found: /usr/share/dtb/$filename.dtb"
 			exit 1
 		fi
-		dtb="$dtb /usr/share/dtb/$filename.dtb"
+		dtb="/usr/share/dtb/$filename.dtb"
 	done
 	_outfile="$input_dir/$kernel_filename-dtb"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
