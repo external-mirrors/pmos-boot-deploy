@@ -21,7 +21,7 @@ source_deviceinfo
 append_or_copy_dtb
 add_mtk_header
 create_uboot_files
-# create_bootimg
+create_bootimg
 flash_updated_boot_parts
 
 mkdir -p "$output_dir"
