@@ -1,5 +1,5 @@
 #!/bin/sh
-set -u
+set -eu
 
 kernel_filename=""
 initfs_filename=""

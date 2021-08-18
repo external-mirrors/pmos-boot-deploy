@@ -1,5 +1,5 @@
 #!/bin/sh
-set -u
+set -eu
 
 # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
 deviceinfo_append_dtb=""
@@ -123,7 +123,7 @@ source_deviceinfo() {
 # $3: related deviceinfo variable (e.g. "generate_bootimg")
 require_package()
 {
-	[ "$(command -v "$1")" = "" ] || return
+	[ "$(command -v "$1")" = "" ] || return 0
 	echo "ERROR: 'deviceinfo_$3' is set, but the package '$2' was not"
 	echo "installed!"
 	exit 1
@@ -175,7 +175,7 @@ copy() {
 
 # Append the correct device tree to the linux image file or copy the dtb to the boot partition
 append_or_copy_dtb() {
-	[ -n "${deviceinfo_dtb}" ] || return
+	[ -n "${deviceinfo_dtb}" ] || return 0
 	echo "==> kernel: device-tree blob operations"
 	dtb=""
 	for filename in $deviceinfo_dtb; do
@@ -200,7 +200,7 @@ append_or_copy_dtb() {
 
 # Add Mediatek header to kernel & initramfs
 add_mtk_header() {
-	[ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ] || return
+	[ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ] || return 0
 	require_package "mtk-mkimage" "mtk-mkimage" "bootimg_mtk_mkimage"
 
 	_infile="$input_dir/$initfs_filename"
@@ -225,7 +225,7 @@ create_uboot_files() {
 		arch="arm64"
 	fi
 
-	[ "${deviceinfo_generate_legacy_uboot_initfs}" = "true" ] || return
+	[ "${deviceinfo_generate_legacy_uboot_initfs}" = "true" ] || return 0
 	require_package "mkimage" "u-boot-tools" "generate_legacy_uboot_initfs"
 
 	echo "==> initramfs: creating uInitrd"
@@ -253,7 +253,7 @@ create_uboot_files() {
 
 # Android devices
 create_bootimg() {
-	[ "${deviceinfo_generate_bootimg}" = "true" ] || return
+	[ "${deviceinfo_generate_bootimg}" = "true" ] || return 0
 	# shellcheck disable=SC3060
 	bootimg="$input_dir/boot.img"
 
@@ -351,13 +351,13 @@ create_bootimg() {
 }
 
 flash_updated_boot_parts() {
-	[ "${deviceinfo_flash_kernel_on_update}" = "true" ] || return
+	[ "${deviceinfo_flash_kernel_on_update}" = "true" ] || return 0
 	# If postmarketos-update-kernel is not installed then nop
-	[ -f /sbin/pmos-update-kernel ] || return
+	[ -f /sbin/pmos-update-kernel ] || return 0
 	# Don't run when in a pmOS chroot
 	if [ -f "/in-pmbootstrap" ]; then
 		echo "==> Not flashing boot in chroot"
-		return
+		return 0
 	fi
 
 	echo "==> Flashing boot image"
