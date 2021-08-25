@@ -344,8 +344,7 @@ create_bootimg() {
 	fi
 	if [ "${deviceinfo_bootimg_append_seandroidenforce}" = "true" ]; then
 		echo "==> initramfs: appending 'SEANDROIDENFORCE' to boot.img"
-		# shellcheck disable=SC3037
-		echo -n "SEANDROIDENFORCE" >> "$bootimg"
+		printf "SEANDROIDENFORCE" >> "$bootimg"
 	fi
 	additional_files="$additional_files $(basename "$bootimg")"
 }
