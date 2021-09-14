@@ -1,7 +1,6 @@
 #!/bin/sh
 set -eu
 
-kernel_filename=""
 initfs_filename=""
 input_dir=""
 output_dir=""
@@ -25,7 +24,7 @@ create_bootimg
 
 mkdir -p "$output_dir"
 
-files_to_copy="$input_dir/$initfs_filename $input_dir/$kernel_filename"
+files_to_copy="$input_dir/$initfs_filename"
 for f in $additional_files; do
 	files_to_copy="$files_to_copy $input_dir/$f"
 done
