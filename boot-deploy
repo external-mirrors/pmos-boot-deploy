@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright 2021 Clayton Craft <clayton@craftyguy.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
 set -eu
 
 initfs_filename=""

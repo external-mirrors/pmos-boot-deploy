@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright 2021 postmarketOS Contributors
+# Copyright 2021 Clayton Craft <clayton@craftyguy.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
 set -eu
 
 # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
