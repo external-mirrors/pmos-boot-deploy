@@ -251,6 +251,12 @@ create_uboot_files() {
 	mkimage -A $arch -O linux -T kernel -C none -a "$deviceinfo_legacy_uboot_load_address" \
 		-e "$deviceinfo_legacy_uboot_load_address" \
 		-n postmarketos -d "$kernelfile" "$input_dir/uImage" || exit 1
+
+	# shellcheck disable=SC3060
+	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
+		sh "${deviceinfo_mkinitfs_postprocess}" "$input_dir/$initfs_filename"
+	fi
+
 	additional_files="$additional_files uImage uInitrd"
 }
 
