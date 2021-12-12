@@ -8,6 +8,7 @@ set -eu
 deviceinfo_append_dtb=""
 deviceinfo_arch=""
 deviceinfo_bootimg_append_seandroidenforce=""
+deviceinfo_bootimg_custom_args=""
 deviceinfo_bootimg_blobpack=""
 deviceinfo_bootimg_dtb_second=""
 deviceinfo_bootimg_mtk_mkimage=""
@@ -334,6 +335,7 @@ create_bootimg() {
 		--pagesize "${deviceinfo_flash_pagesize}" \
 		${_second} \
 		${_dt} \
+		${deviceinfo_bootimg_custom_args} \
 		-o "$bootimg" || exit 1
 	# shellcheck disable=SC3060
 	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
