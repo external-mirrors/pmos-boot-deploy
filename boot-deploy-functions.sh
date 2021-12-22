@@ -14,6 +14,10 @@ deviceinfo_bootimg_dtb_second=""
 deviceinfo_bootimg_mtk_mkimage=""
 deviceinfo_bootimg_pxa=""
 deviceinfo_bootimg_qcdt=""
+deviceinfo_bootimg_override_payload=""
+deviceinfo_bootimg_override_payload_compression=""
+deviceinfo_bootimg_override_payload_append_dtb=""
+deviceinfo_bootimg_override_initramfs=""
 deviceinfo_dtb=""
 deviceinfo_flash_offset_base=""
 deviceinfo_flash_offset_kernel=""
@@ -22,6 +26,7 @@ deviceinfo_flash_offset_second=""
 deviceinfo_flash_offset_tags=""
 deviceinfo_flash_pagesize=""
 deviceinfo_generate_bootimg=""
+deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
@@ -42,7 +47,7 @@ usage() {
 Where:
     -i  filename of the initfs in the input directory
     -k  filename of the kernel in the input directory
-    -d  path to directory containing input initfs, kernel  
+    -d  path to directory containing input initfs, kernel
     -o  path to output directory {default: /boot}
     -c  path to deviceinfo {default: /etc/deviceinfo}
 
@@ -107,7 +112,6 @@ get_free_space() {
 	# note: tr is used to reduce extra spaces in df output to a single space,
 	# so cut fields are consistent
 	_df_out="$(df -P "$1" | tr -s ' ' | tail -1 | cut -d' ' -f4)"
-	# 
 	_df_out="$(echo "$_df_out"/0.9 | bc -s)"
 	echo "$_df_out"
 }
@@ -222,8 +226,12 @@ add_mtk_header() {
 	additional_files="$additional_files $(basename "${kernel}"-mtk)"
 }
 
-# Legacy u-boot images
 create_uboot_files() {
+	create_legacy_uboot_images
+	create_uboot_fit_image
+}
+
+create_legacy_uboot_images() {
 	arch="arm"
 	if [ "${deviceinfo_arch}" = "aarch64" ]; then
 		arch="arm64"
@@ -261,6 +269,29 @@ create_uboot_files() {
 	additional_files="$additional_files uImage uInitrd"
 }
 
+create_uboot_fit_image() {
+	echo "==> u-boot: creating FIT images"
+	[ "${deviceinfo_generate_uboot_fit_images}" = "true" ] || return 0
+	fit_source_files=$(ls -A "$input_dir"/*.its)
+	if [ -z "$fit_source_files" ]; then
+		echo "==> u-boot: no FIT image source files found"
+		return 0
+	fi
+	require_package "mkimage" "u-boot-tools" "generate_bootimg_uboot"
+	require_package "dtc" "dtc" "generate_uboot_fit_image"
+	require_package "dtc" "dtc" "generate_bootimg_uboot_and_fit_image"
+
+	for uboot_fit_source in $fit_source_files; do
+		echo "==> u-boot: creating FIT image from $uboot_fit_source file"
+		uboot_fit_image=$(echo "$uboot_fit_source" | sed -e 's/\.its/.itb/g')
+		# shellcheck disable=SC3060
+		mkimage -f "$uboot_fit_source" "$uboot_fit_image" || exit 1
+
+		uboot_fit_image_filename=$(basename "$uboot_fit_image")
+		additional_files="$additional_files $uboot_fit_image_filename"
+	done
+}
+
 # Android devices
 create_bootimg() {
 	[ "${deviceinfo_generate_bootimg}" = "true" ] || return 0
@@ -279,15 +310,38 @@ create_bootimg() {
 	_base="${deviceinfo_flash_offset_base}"
 	[ -z "$_base" ] && _base="0x10000000"
 
-	# shellcheck disable=SC3060
-	kernelfile="$input_dir/$kernel_filename"
-	if [ "${deviceinfo_append_dtb}" = "true" ]; then
-		kernelfile="${kernelfile}-dtb"
+	if [ -n "$deviceinfo_bootimg_override_payload" ]; then
+		if [ -f "$input_dir/$deviceinfo_bootimg_override_payload" ]; then
+			payload="$input_dir/$deviceinfo_bootimg_override_payload"
+			echo "==> initramfs: replace kernel with file $payload"
+			if [ "$deviceinfo_bootimg_override_payload_compression" = "gzip" ]; then
+				echo "==> initramfs: gzip payload replacement"
+				gzip "$payload"
+				kernelfile="$payload.gz"
+			else
+				kernelfile="$payload"
+			fi
+			if [ -n "$deviceinfo_bootimg_override_payload_append_dtb" ]; then
+				echo "==> initramfs: append $deviceinfo_bootimg_override_payload_append_dtb at payload end"
+				cat "$input_dir/$deviceinfo_bootimg_override_payload_append_dtb" >> "$kernelfile"
+			fi
+		else
+			echo "File $input_dir/$deviceinfo_bootimg_override_payload not found,"
+			echo "please, correct deviceinfo_bootimg_override_payload option value."
+			exit 1
+		fi
+	else
+		# shellcheck disable=SC3060
+		kernelfile="$input_dir/$kernel_filename"
+		if [ "${deviceinfo_append_dtb}" = "true" ]; then
+			kernelfile="${kernelfile}-dtb"
+		fi
+
+		if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
+			kernelfile="${kernelfile}-mtk"
+		fi
 	fi
 
-	if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
-		kernelfile="${kernelfile}-mtk"
-	fi
 
 	_second=""
 	if [ "${deviceinfo_bootimg_dtb_second}" = "true" ]; then
@@ -322,10 +376,22 @@ create_bootimg() {
 			exit 1
 		fi
 	fi
+
+	ramdisk="$input_dir/$initfs_filename"
+	if [ -n "$deviceinfo_bootimg_override_initramfs" ]; then
+		if [ -f "$input_dir/$deviceinfo_bootimg_override_initramfs" ]; then
+			echo "==> initramfs: replace initramfs with file $input_dir/$deviceinfo_bootimg_override_initramfs"
+			ramdisk="$input_dir/$deviceinfo_bootimg_override_initramfs"
+		else
+			echo "ERROR: file $input_dir/$deviceinfo_bootimg_override_initramfs not found,"
+			echo "please, correct deviceinfo_bootimg_override_initramfs option value."
+			exit 1
+		fi
+	fi
 	# shellcheck disable=SC2039 disable=SC2086
 	"${MKBOOTIMG}" \
 		--kernel "${kernelfile}" \
-		--ramdisk "$input_dir/$initfs_filename" \
+		--ramdisk "$ramdisk" \
 		--base "${_base}" \
 		--second_offset "${deviceinfo_flash_offset_second}" \
 		--cmdline "${deviceinfo_kernel_cmdline}" \
