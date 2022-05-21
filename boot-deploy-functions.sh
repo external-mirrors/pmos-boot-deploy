@@ -31,6 +31,7 @@ deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
 deviceinfo_legacy_uboot_load_address=""
+deviceinfo_legacy_uboot_image_name=""
 deviceinfo_flash_kernel_on_update=""
 
 # getopts / get_options set the following 'global' variables:
@@ -256,10 +257,14 @@ create_legacy_uboot_images() {
 		deviceinfo_legacy_uboot_load_address="80008000"
 	fi
 
+	if [ -z "$deviceinfo_legacy_uboot_image_name" ]; then
+		deviceinfo_legacy_uboot_image_name="postmarketos"
+	fi
+
 	# shellcheck disable=SC3060
 	mkimage -A $arch -O linux -T kernel -C none -a "$deviceinfo_legacy_uboot_load_address" \
 		-e "$deviceinfo_legacy_uboot_load_address" \
-		-n postmarketos -d "$kernelfile" "$input_dir/uImage" || exit 1
+		-n "$deviceinfo_legacy_uboot_image_name" -d "$kernelfile" "$input_dir/uImage" || exit 1
 
 	# shellcheck disable=SC3060
 	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
