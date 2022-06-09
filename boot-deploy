@@ -23,6 +23,7 @@ append_or_copy_dtb
 add_mtk_header
 create_uboot_files
 create_bootimg
+create_depthcharge_kernel_image
 
 mkdir -p "$output_dir"
 
@@ -44,5 +45,6 @@ sync
 
 # flashing requires things in /boot to exist
 flash_updated_boot_parts
+flash_updated_depthcharge_kernel
 
 exit 0

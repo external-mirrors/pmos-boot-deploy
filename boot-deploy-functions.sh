@@ -18,6 +18,7 @@ deviceinfo_bootimg_override_payload=""
 deviceinfo_bootimg_override_payload_compression=""
 deviceinfo_bootimg_override_payload_append_dtb=""
 deviceinfo_bootimg_override_initramfs=""
+deviceinfo_cgpt_kpart=""
 deviceinfo_dtb=""
 deviceinfo_flash_offset_base=""
 deviceinfo_flash_offset_kernel=""
@@ -26,6 +27,7 @@ deviceinfo_flash_offset_second=""
 deviceinfo_flash_offset_tags=""
 deviceinfo_flash_pagesize=""
 deviceinfo_generate_bootimg=""
+deviceinfo_generate_depthcharge_image=""
 deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_mkinitfs_postprocess=""
@@ -471,6 +473,40 @@ flash_updated_boot_parts() {
 
 	echo "==> Flashing boot image"
 	pmos-update-kernel
+}
+
+# Chrome OS devices
+create_depthcharge_kernel_image() {
+	[ "${deviceinfo_generate_depthcharge_image}" = "true" ] || return 0
+
+	require_package "mkdepthcharge" "depthcharge-tools" "generate_depthcharge_image"
+
+	echo "==> Generating vmlinuz.kpart (this may take a few minutes)"
+	mkdepthcharge \
+		--output "$input_dir"/vmlinuz.kpart \
+		--compress lzma \
+		--cmdline "$deviceinfo_kernel_cmdline" \
+		--vmlinuz "$input_dir/$kernel_filename" \
+		--initramfs "$input_dir/$initfs_filename" \
+		--dtbs "$input_dir/$(basename "$deviceinfo_dtb".dtb)" \
+		--format fit
+
+	additional_files="$additional_files $(basename "$deviceinfo_cgpt_kpart")"
+}
+
+flash_updated_depthcharge_kernel() {
+	[ "${deviceinfo_generate_depthcharge_image}" = "true" ] || return 0
+
+	[ -f /sbin/pmos-update-depthcharge-kernel ] || return 0
+
+	# Don't run when in a pmOS chroot
+	if [ -f "/in-pmbootstrap" ]; then
+		echo "==> Not flashing vmlinuz.kpart in chroot"
+		return 0
+	fi
+
+	echo "==> Flashing depthcharge kernel image"
+	pmos-update-depthcharge-kernel
 }
 
 # $1: list of files to get total size of, in kilobytes
