@@ -20,7 +20,9 @@ deviceinfo_bootimg_override_payload_append_dtb=""
 deviceinfo_bootimg_override_initramfs=""
 deviceinfo_cgpt_kpart=""
 deviceinfo_dtb=""
+deviceinfo_header_version=""
 deviceinfo_flash_offset_base=""
+deviceinfo_flash_offset_dtb=""
 deviceinfo_flash_offset_kernel=""
 deviceinfo_flash_offset_ramdisk=""
 deviceinfo_flash_offset_second=""
@@ -186,7 +188,17 @@ copy() {
 
 # Append the correct device tree to the linux image file or copy the dtb to the boot partition
 append_or_copy_dtb() {
-	[ -n "${deviceinfo_dtb}" ] || return 0
+	if [ -z "${deviceinfo_dtb}" ]; then
+		if [ "$deviceinfo_header_version" = "2" ]; then
+			echo "ERROR: deviceinfo_header_version is 2, but"
+			echo "'deviceinfo_dtb' is missing. Set 'deviceinfo_dtb'"
+			echo "to the device tree blob for your device."
+			echo "See also: <https://postmarketos.org/deviceinfo>"
+			exit 1
+		else
+			return 0
+		fi
+	fi
 	echo "==> kernel: device-tree blob operations"
 	# FIXME: Currently, this always uses the first dtb found, which may not always
 	# be correct. This should only be an issue if you have multiple kernels
@@ -221,6 +233,12 @@ append_or_copy_dtb() {
 
 	# Remove excess whitespace
 	dtb=$(echo "$dtb" | xargs)
+
+	if [ "$deviceinfo_header_version" = "2" ] && [ "$(echo "$dtb" | tr ' ' '\n' | wc -l)" -gt 1 ]; then
+		echo "ERROR: deviceinfo_header_version is 2, but"
+		echo "'deviceinfo_dtb' specifies more than one dtb!"
+		exit 1
+	fi
 
 	_outfile="$input_dir/$kernel_filename-dtb"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
@@ -410,6 +428,17 @@ create_bootimg() {
 			echo "file. See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
+	fi
+
+	if [ "$deviceinfo_header_version" = "2" ] && [ -z "$deviceinfo_bootimg_custom_args" ]; then
+		if [ -z "$deviceinfo_flash_offset_dtb" ]; then
+			echo "ERROR: deviceinfo_header_version is 2, but"
+			echo "'deviceinfo_flash_offset_dtb' is missing. Set it"
+			echo "to the device tree blob offset for your device."
+			echo "See also: <https://postmarketos.org/deviceinfo>"
+			exit 1
+		fi
+		deviceinfo_bootimg_custom_args="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $dtb"
 	fi
 
 	ramdisk="$input_dir/$initfs_filename"
