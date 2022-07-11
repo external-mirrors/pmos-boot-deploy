@@ -186,23 +186,51 @@ copy() {
 append_or_copy_dtb() {
 	[ -n "${deviceinfo_dtb}" ] || return 0
 	echo "==> kernel: device-tree blob operations"
+	# FIXME: Currently, this always uses the first dtb found, which may not always
+	# be correct. This should only be an issue if you have multiple kernels
+	# that provide the same dtb installed, which pmOS does not support, but it is
+	# still potentially unexpected behaviour.
 	dtb=""
 	for filename in $deviceinfo_dtb; do
-		if ! [ -e "/usr/share/dtb/$filename.dtb" ]; then
-			echo "ERROR: File not found: /usr/share/dtb/$filename.dtb"
+		dtb_found="false"
+		# Modern postmarketOS dtb path
+		if [ -e "/boot/dtbs/$filename.dtb" ]; then
+			dtb="$dtb /boot/dtbs/$filename.dtb"
+			dtb_found="true"
+		fi
+		# Alpine-style dtb paths
+		if [ -e "$(find /boot -path "/boot/dtbs-*/$filename.dtb")" ] && [ "$dtb_found" = "false" ]; then
+			dtb="$dtb $(find /boot -path "/boot/dtbs-*/$filename.dtb")"
+			dtb_found="true"
+		fi
+		# Legacy postmarketOS dtb path (for backwards compatibility)
+		if [ -e "/usr/share/dtb/$filename.dtb" ] && [ "$dtb_found" = "false" ]; then
+			dtb="$dtb /usr/share/dtb/$filename.dtb"
+			dtb_found="true"
+		fi
+		if [ "$dtb_found" = "false" ]; then
+			echo "ERROR: Unable to find $filename.dtb in the following locations:"
+			echo "    - /boot/dtbs/"
+			echo "    - /boot/dtbs-*/"
+			echo "    - /usr/share/dtb/"
 			exit 1
 		fi
-		dtb="/usr/share/dtb/$filename.dtb"
 	done
+
+	# Remove excess whitespace
+	dtb=$(echo "$dtb" | xargs)
+
 	_outfile="$input_dir/$kernel_filename-dtb"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
 		echo "==> kernel: appending device-tree ${deviceinfo_dtb}"
-		cat "$input_dir/$kernel_filename" "$dtb" > "$_outfile"
+		# shellcheck disable=SC2086
+		cat "$input_dir/$kernel_filename" $dtb > "$_outfile"
 		additional_files="$additional_files $(basename "$_outfile")"
 	else
-		for filename in $deviceinfo_dtb; do
-			copy "/usr/share/dtb/$filename.dtb" "$input_dir/${filename}.dtb"
-			additional_files="$additional_files ${filename}.dtb"
+		for dtb_path in $dtb; do
+			dtb_filename=$(basename "$dtb_path")
+			copy "$dtb_path" "$input_dir/$dtb_filename"
+			additional_files="$additional_files ${dtb_filename}"
 		done
 	fi
 }
