@@ -200,35 +200,10 @@ append_or_copy_dtb() {
 		fi
 	fi
 	echo "==> kernel: device-tree blob operations"
-	# FIXME: Currently, this always uses the first dtb found, which may not always
-	# be correct. This should only be an issue if you have multiple kernels
-	# that provide the same dtb installed, which pmOS does not support, but it is
-	# still potentially unexpected behaviour.
+
 	dtb=""
 	for filename in $deviceinfo_dtb; do
-		dtb_found="false"
-		# Modern postmarketOS dtb path
-		if [ -e "/boot/dtbs/$filename.dtb" ]; then
-			dtb="$dtb /boot/dtbs/$filename.dtb"
-			dtb_found="true"
-		fi
-		# Alpine-style dtb paths
-		if [ -e "$(find /boot -path "/boot/dtbs-*/$filename.dtb")" ] && [ "$dtb_found" = "false" ]; then
-			dtb="$dtb $(find /boot -path "/boot/dtbs-*/$filename.dtb")"
-			dtb_found="true"
-		fi
-		# Legacy postmarketOS dtb path (for backwards compatibility)
-		if [ -e "/usr/share/dtb/$filename.dtb" ] && [ "$dtb_found" = "false" ]; then
-			dtb="$dtb /usr/share/dtb/$filename.dtb"
-			dtb_found="true"
-		fi
-		if [ "$dtb_found" = "false" ]; then
-			echo "ERROR: Unable to find $filename.dtb in the following locations:"
-			echo "    - /boot/dtbs/"
-			echo "    - /boot/dtbs-*/"
-			echo "    - /usr/share/dtb/"
-			exit 1
-		fi
+		dtb="$dtb $(find_dtb "$filename")"
 	done
 
 	# Remove excess whitespace
@@ -405,15 +380,8 @@ create_bootimg() {
 			echo "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
-		dtb="/usr/share/dtb/${deviceinfo_dtb}.dtb"
+		dtb=$(find_dtb "$deviceinfo_dtb")
 		_second="--second $dtb"
-		if ! [ -e "$dtb" ]; then
-			echo "ERROR: File not found: $dtb. Please set 'deviceinfo_dtb'"
-			echo "to the relative path to the device tree blob for your"
-			echo "device (without .dtb)."
-			echo "See also: <https://postmarketos.org/deviceinfo>"
-			exit 1
-		fi
 	fi
 	_dt=""
 	if [ "${deviceinfo_bootimg_qcdt}" = "true" ]; then
@@ -598,4 +566,45 @@ check_destination_free_space() {
 		fi
 	done
 	echo "... OK!"
+}
+
+# $1: name of dtb to find
+find_dtb() {
+	filename="$1"
+
+	if [ -z "$filename" ]; then
+		echo "ERROR: dtb name was an empty string"
+		exit 1
+	fi
+
+	# FIXME: Currently, this always uses the first dtb found, which may not always
+	# be correct. This should only be an issue if you have multiple kernels
+	# that provide the same dtb installed, which pmOS does not support, but it is
+	# still potentially unexpected behaviour.
+
+	dtb_found="false"
+	# Modern postmarketOS dtb path
+	if [ -e "/boot/dtbs/$filename.dtb" ]; then
+		dtb="/boot/dtbs/$filename.dtb"
+		dtb_found="true"
+	fi
+	# Alpine-style dtb paths
+	if [ -e "$(find /boot -path "/boot/dtbs-*/$filename.dtb")" ] && [ "$dtb_found" = "false" ]; then
+		dtb=$(find /boot -path "/boot/dtbs-*/$filename.dtb")
+		dtb_found="true"
+	fi
+	# Legacy postmarketOS dtb path (for backwards compatibility)
+	if [ -e "/usr/share/dtb/$filename.dtb" ] && [ "$dtb_found" = "false" ]; then
+		dtb="/usr/share/dtb/$filename.dtb"
+		dtb_found="true"
+	fi
+	if [ "$dtb_found" = "false" ]; then
+		echo "ERROR: Unable to find $filename.dtb in the following locations:"
+		echo "    - /boot/dtbs/"
+		echo "    - /boot/dtbs-*/"
+		echo "    - /usr/share/dtb/"
+		exit 1
+	fi
+
+	echo "$dtb"
 }
