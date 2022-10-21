@@ -19,6 +19,7 @@ deviceinfo_bootimg_override_payload_compression=""
 deviceinfo_bootimg_override_payload_append_dtb=""
 deviceinfo_bootimg_override_initramfs=""
 deviceinfo_cgpt_kpart=""
+deviceinfo_depthcharge_board=""
 deviceinfo_dtb=""
 deviceinfo_header_version=""
 deviceinfo_flash_offset_base=""
@@ -476,17 +477,22 @@ flash_updated_boot_parts() {
 create_depthcharge_kernel_image() {
 	[ "${deviceinfo_generate_depthcharge_image}" = "true" ] || return 0
 
-	require_package "mkdepthcharge" "depthcharge-tools" "generate_depthcharge_image"
+	require_package "depthchargectl" "depthcharge-tools" "generate_depthcharge_image"
 
-	echo "==> Generating vmlinuz.kpart (this may take a few minutes)"
-	mkdepthcharge \
-		--output "$input_dir"/vmlinuz.kpart \
-		--compress lzma \
-		--cmdline "$deviceinfo_kernel_cmdline" \
-		--vmlinuz "$input_dir/$kernel_filename" \
+	echo "==> Generating vmlinuz.kpart"
+
+	if [ -z "${deviceinfo_depthcharge_board}" ]; then
+		echo "ERROR: deviceinfo_depthcharge_board is not set"
+		exit 1
+	fi
+
+	depthchargectl build --root none \
+		--board "$deviceinfo_depthcharge_board" \
+		--kernel "$input_dir/$kernel_filename" \
+		--kernel-cmdline "$deviceinfo_kernel_cmdline" \
 		--initramfs "$input_dir/$initfs_filename" \
-		--dtbs "$input_dir/$(basename "$deviceinfo_dtb".dtb)" \
-		--format fit
+		--fdtdir "$input_dir" \
+		--output "$input_dir/$(basename "$deviceinfo_cgpt_kpart")"
 
 	additional_files="$additional_files $(basename "$deviceinfo_cgpt_kpart")"
 }
