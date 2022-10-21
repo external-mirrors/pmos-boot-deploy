@@ -427,7 +427,7 @@ create_bootimg() {
 		--ramdisk "$ramdisk" \
 		--base "${_base}" \
 		--second_offset "${deviceinfo_flash_offset_second}" \
-		--cmdline "${deviceinfo_kernel_cmdline}" \
+		--cmdline "$(get_cmdline)" \
 		--kernel_offset "${deviceinfo_flash_offset_kernel}" \
 		--ramdisk_offset "${deviceinfo_flash_offset_ramdisk}" \
 		--tags_offset "${deviceinfo_flash_offset_tags}" \
@@ -489,7 +489,7 @@ create_depthcharge_kernel_image() {
 	depthchargectl build --root none \
 		--board "$deviceinfo_depthcharge_board" \
 		--kernel "$input_dir/$kernel_filename" \
-		--kernel-cmdline "$deviceinfo_kernel_cmdline" \
+		--kernel-cmdline "$(get_cmdline)" \
 		--initramfs "$input_dir/$initfs_filename" \
 		--fdtdir "$input_dir" \
 		--output "$input_dir/$(basename "$deviceinfo_cgpt_kpart")"
@@ -517,6 +517,10 @@ get_size_of_files() {
 	# shellcheck disable=SC2086
 	ret=$(du $1 | cut -f1 | sed '$ s/\n$//' | tr '\n' + |sed 's/.$/\n/' | bc -s)
 	echo "$ret"
+}
+
+get_cmdline() {
+	echo "$deviceinfo_kernel_cmdline"
 }
 
 # Check that the the given list of files can be copied to the destination, $output_dir,
