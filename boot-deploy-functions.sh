@@ -520,7 +520,13 @@ get_size_of_files() {
 }
 
 get_cmdline() {
-	echo "$deviceinfo_kernel_cmdline"
+	ret="$deviceinfo_kernel_cmdline"
+
+	if [ -f "/etc/boot/cmdline.txt" ]; then
+		ret="$ret $(xargs < /etc/boot/cmdline.txt)"
+	fi
+
+	echo "$ret"
 }
 
 # Check that the the given list of files can be copied to the destination, $output_dir,
