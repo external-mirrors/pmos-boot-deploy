@@ -31,6 +31,8 @@ deviceinfo_flash_offset_tags=""
 deviceinfo_flash_pagesize=""
 deviceinfo_generate_bootimg=""
 deviceinfo_generate_depthcharge_image=""
+deviceinfo_generate_extlinux_config=""
+deviceinfo_generate_grub_config=""
 deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_mkinitfs_postprocess=""
@@ -527,6 +529,58 @@ flash_updated_depthcharge_kernel() {
 
 	echo "==> Flashing depthcharge kernel image"
 	pmos-update-depthcharge-kernel
+}
+
+create_extlinux_config() {
+	[ "${deviceinfo_generate_extlinux_config}" = "true" ] || return 0
+
+	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
+		echo "ERROR: deviceinfo_dtb contains more than one dtb"
+		exit 1
+	fi
+
+	mkdir -p /boot/extlinux
+
+	echo "==> Generating /boot/extlinux/extlinux.conf"
+
+	cat <<EOF > /tmp/extlinux.conf
+timeout 1
+default $distro_name
+menu title boot prev kernel
+
+label $distro_name
+  kernel /$kernel_filename
+  fdt /$(basename "$deviceinfo_dtb").dtb
+  initrd /$initfs_filename
+  append $(get_cmdline)
+EOF
+	copy "/tmp/extlinux.conf" "/boot/extlinux/extlinux.conf"
+	rm /tmp/extlinux.conf
+}
+
+create_grub_config() {
+	[ "${deviceinfo_generate_grub_config}" = "true" ] || return 0
+
+	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
+		echo "ERROR: deviceinfo_dtb contains more than one dtb"
+		exit 1
+	fi
+
+	mkdir -p /boot/grub
+
+	echo "==> Generating /boot/grub/grub.cfg"
+
+	cat <<EOF > /tmp/grub.cfg
+timeout=0
+
+menuentry "$distro_name" {
+  linux /$kernel_filename $(get_cmdline)
+  initrd /$initfs_filename
+  devicetree /$(basename "$deviceinfo_dtb").dtb
+}
+EOF
+	copy "/tmp/grub.cfg" "/boot/grub/grub.cfg"
+	rm /tmp/grub.cfg
 }
 
 # $1: list of files to get total size of, in kilobytes

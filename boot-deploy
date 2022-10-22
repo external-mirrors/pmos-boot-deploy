@@ -25,6 +25,8 @@ add_mtk_header
 create_uboot_files
 create_bootimg
 create_depthcharge_kernel_image
+create_extlinux_config
+create_grub_config
 
 mkdir -p "$output_dir"
 
