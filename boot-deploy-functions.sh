@@ -42,7 +42,9 @@ deviceinfo_legacy_uboot_image_name=""
 deviceinfo_flash_kernel_on_update=""
 
 # Declare used /etc/boot/boot-deploy variables to pass shellcheck (order alphabetically)
+crypttab_entry=""
 distro_name=""
+distro_prefix=""
 
 # getopts / get_options set the following 'global' variables:
 kernel_filename=
@@ -144,8 +146,16 @@ source_boot_deploy_config() {
 	fi
 	# shellcheck disable=SC1090
 	. "$file"
+	if [ -z "$crypttab_entry" ]; then
+		echo "ERROR: crypttab_entry from $file is not set"
+		exit 1
+	fi
 	if [ -z "$distro_name" ]; then
 		echo "ERROR: distro_name from $file is not set"
+		exit 1
+	fi
+	if [ -z "$distro_prefix" ]; then
+		echo "ERROR: distro_prefix from $file is not set"
 		exit 1
 	fi
 }
@@ -590,11 +600,70 @@ get_size_of_files() {
 	echo "$ret"
 }
 
+# $1: mount point
+parse_fstab_entry() {
+	fstab=$(grep -v ^\# /etc/fstab | grep .)
+	ret=""
+
+	# shellcheck disable=SC3003
+	IFS=$'\n'
+	for entry in $fstab; do
+		if [ "$(echo "$entry" | xargs | cut -d" " -f2)" = "$1" ]; then
+			ret="$(echo "$entry" | xargs | cut -d" " -f1)"
+		fi
+	done
+	unset IFS
+
+	echo "$ret"
+}
+
+# $1: mount point
+parse_crypttab_entry() {
+	crypttab=$(grep -v ^\# /etc/crypttab | grep .)
+	ret=""
+
+	# shellcheck disable=SC3003
+	IFS=$'\n'
+	for entry in $crypttab; do
+		if [ "$(echo "$entry" | xargs | cut -d" " -f1)" = "$1" ]; then
+			ret="$(echo "$entry" | xargs | cut -d" " -f2)"
+		fi
+	done
+	unset IFS
+
+	echo "$ret"
+}
+
 get_cmdline() {
 	ret="$deviceinfo_kernel_cmdline"
 
 	if [ -f "/etc/boot/cmdline.txt" ]; then
 		ret="$ret $(xargs < /etc/boot/cmdline.txt)"
+	fi
+
+	boot_uuid=""
+	root_uuid=""
+
+	if [ -f "/etc/fstab" ]; then
+		boot_uuid=$(parse_fstab_entry "/boot")
+		root_uuid=$(parse_fstab_entry "/")
+	fi
+
+	if [ -f "/etc/crypttab" ]; then
+		root_uuid=$(parse_crypttab_entry "$crypttab_entry")
+	fi
+
+	# When appropriate fstab entry does not exist, cmdline will not 
+	# be passed because of -n checks. In this case, postmarketOS 
+	# init script will look for partitions according to pmOS_boot
+	# and pmOS_root labels.
+
+	if [ -n "$boot_uuid" ] && [ "$boot_uuid" != "${boot_uuid#UUID=}" ]; then
+		ret="$ret ${distro_prefix}_boot_uuid=${boot_uuid#UUID=}"
+	fi
+
+	if [ -n "$root_uuid" ] && [ "$root_uuid" != "${root_uuid#UUID=}" ]; then
+		ret="$ret ${distro_prefix}_root_uuid=${root_uuid#UUID=}"
 	fi
 
 	echo "$ret"

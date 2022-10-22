@@ -27,6 +27,8 @@ boot-deploy stores its configuration in `/etc/boot/boot-deploy`. This file is
 sourced in shell script, so it must be in `var=value` format. For example:
 ```
 distro_name="postmarketOS"
+distro_prefix="pmos"
+crypttab_entry="root"
 ```
 
 ## Usage
