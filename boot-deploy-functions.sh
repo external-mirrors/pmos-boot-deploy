@@ -18,6 +18,8 @@ deviceinfo_bootimg_override_payload_append_dtb=""
 deviceinfo_bootimg_override_payload_compression=""
 deviceinfo_bootimg_pxa=""
 deviceinfo_bootimg_qcdt=""
+deviceinfo_bootimg_vendor_dependent=""
+deviceinfo_bootimg_vendor_device_tree_identifiers=""
 deviceinfo_cgpt_kpart=""
 deviceinfo_depthcharge_board=""
 deviceinfo_dtb=""
@@ -57,6 +59,9 @@ input_dir=
 output_dir="/boot"
 additional_files=
 deviceinfo="/etc/deviceinfo"
+bootimg_vendor_filename="android.img"
+bootimg_vendor="/boot/$bootimg_vendor_filename"
+bootimg_vendor_extract_dir="${bootimg_vendor%.*}"
 
 usage() {
 	printf "Usage:
@@ -140,6 +145,51 @@ source_deviceinfo() {
 	fi
 	# shellcheck disable=SC1090
 	. "$deviceinfo"
+
+	# shellcheck disable=SC2039
+	extracted_files=$(find "$bootimg_vendor_extract_dir" -newer "$bootimg_vendor")
+	if [ -d "$bootimg_vendor_extract_dir" ] && [ -n "$(ls -A "$bootimg_vendor_extract_dir")" ] \
+			&& [ -n "$extracted_files" ]; then
+		should_unpack_android_image=0
+		should_process_android_image=1
+		echo "==> bootimg vendor: $bootimg_vendor already extracted, skipping"
+	elif [ ! -f "$bootimg_vendor" ]; then
+		echo "==> bootimg vendor: $bootimg_vendor file not found"
+		should_process_android_image=0
+		should_unpack_android_image=0
+		remove_android_dependent
+	else
+		echo "==> bootimg vendor: $bootimg_vendor found"
+		should_unpack_android_image=1
+		should_process_android_image=1
+	fi
+}
+
+remove_android_dependent() {
+	echo "==> bootimg vendor: cleaning dependent files."
+	for vendor_dependent in $deviceinfo_bootimg_vendor_dependent; do
+		fit_source_files=$(ls -A "$input_dir"/*.its)
+		for uboot_fit_source in $fit_source_files; do
+			name="${uboot_fit_source##*/}"
+			name="${name%.*}"
+			# shellcheck disable=SC2039,SC3010
+			if [[ "$vendor_dependent" == "$name"* ]]; then
+				echo "==> u-boot: removing $uboot_fit_source since it's vendor_dependent"
+				rm "$uboot_fit_source"
+			fi
+		done
+
+		override_files="$deviceinfo_bootimg_override_initramfs"
+		for override_file in $override_files; do
+			name="${override_file%.*}"
+			# shellcheck disable=SC2039,SC3010
+			if [[ "$vendor_dependent" == "$name"* ]]; then
+				echo "==> initramfs: removing $override_file from override_initramfs file list since it's vendor_dependent"
+				deviceinfo_bootimg_override_initramfs="${deviceinfo_bootimg_override_initramfs%"$override_file"*}\
+				${deviceinfo_bootimg_override_initramfs##*"$override_file"}"
+			fi
+		done
+	done
 }
 
 source_boot_deploy_config() {
@@ -790,6 +840,57 @@ find_dtb() {
 	fi
 
 	echo "$dtb"
+}
+
+process_android_boot_image() {
+	[ "$should_process_android_image" = 0 ] && return
+	unpack_android_boot_image
+	find_board_dtb
+	override_header_info
+}
+
+unpack_android_boot_image() {
+	[ "$should_unpack_android_image" = 0 ] && return
+	require_package "unpackbootimg" "unpackbootimg" "bootimg_vendor"
+	mkdir -p "${bootimg_vendor_extract_dir}"
+	unpackbootimg -i "${bootimg_vendor}" -o "${bootimg_vendor_extract_dir}"
+	require_package "extract-dtb" "extract-dtb" "deviceinfo_bootimg_vendor_device_tree_identifiers"
+	extract-dtb -o "${bootimg_vendor_extract_dir}/dt" "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-kernel"
+}
+
+find_board_dtb() {
+	if [ -z "${deviceinfo_bootimg_vendor_device_tree_identifiers}" ]; then
+		log "Error: deviceinfo_bootimg_vendor_device_tree_identifiers is empty, cannot find vendor dtb"
+		exit 1
+	fi
+	log "decompiling extracted dtbs"
+	find "${bootimg_vendor_extract_dir}/dt" -name "*dtbdump*" | sed -E 's/(.*)\..*/\1/g' | xargs -I{} dtc -q -I dtb -O dts -o {}.dts {}.dtb
+	echo "$deviceinfo_bootimg_vendor_device_tree_identifiers" | tr ' ' '\n' | while read -r e; do
+		log "searching pattern: $e"
+		find "${bootimg_vendor_extract_dir}/dt" -name "*dtbdump*.dts" | tr ' ' '\n' | while read -r file; do
+			log "searching in file: $file"
+			if ! grep -q -e "$e" "$file"; then
+				rm "$file"
+			fi
+		done
+	done
+	match_file=$(find "${bootimg_vendor_extract_dir}/dt" -name "*dtbdump*.dts" | tr ' ' '\n' | sed -e 's@\.dts@\.dtb@g')
+	log "dts found: $match_file"
+	deviceinfo_bootimg_override_payload_append_dtb=$(echo "$match_file" | sed -e 's@.*/\(.*\)@\1@g')
+	cp "$match_file" "$input_dir/$deviceinfo_bootimg_override_payload_append_dtb"
+}
+
+override_header_info() {
+	deviceinfo_flash_offset_base=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-base")
+	deviceinfo_flash_offset_kernel=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-kernel_offset")
+	deviceinfo_flash_offset_ramdisk=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-ramdisk_offset")
+	deviceinfo_flash_offset_second=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-second_offset")
+	deviceinfo_flash_offset_tags=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-tags_offset")
+	deviceinfo_flash_pagesize=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-pagesize")
+	deviceinfo_flash_os_patch_level=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-os_patch_level")
+	deviceinfo_flash_os_version=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-os_version")
+	deviceinfo_flash_board=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-board")
+	deviceinfo_flash_hashtype=$(cat "${bootimg_vendor_extract_dir}/${bootimg_vendor_filename}-hashtype")
 }
 
 # $1: Message to log. Will be prefixed by an arrow.

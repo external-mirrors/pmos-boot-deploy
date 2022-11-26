@@ -34,6 +34,13 @@ editor-config:
 
 tests:
   <<: *only-default
+  before_script:
+#   extract-dtb expects python3 version same as in postmarketos.
+    - apk add python3 --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main --allow-untrusted -f -l
+    - |
+      apk -q add mkbootimg-osm0sis dtc extract-dtb \
+      --repository=http://mirror.postmarketos.org/postmarketos/master \
+      --allow-untrusted
   script:
     - ./test_boot_deploy_functions.sh
   artifacts:

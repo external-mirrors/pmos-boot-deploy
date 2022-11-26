@@ -22,6 +22,11 @@ source_deviceinfo
 source_boot_deploy_config
 append_or_copy_dtb
 add_mtk_header
+
+# Multiboot
+# https://wiki.postmarketos.org/wiki/U-Boot_porting#Implement_multiboot_involving_Android_in_a_device_aport
+process_android_boot_image
+
 create_uboot_files
 create_bootimg
 create_depthcharge_kernel_image
