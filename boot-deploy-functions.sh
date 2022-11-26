@@ -21,6 +21,8 @@ deviceinfo_bootimg_qcdt=""
 deviceinfo_cgpt_kpart=""
 deviceinfo_depthcharge_board=""
 deviceinfo_dtb=""
+deviceinfo_flash_board=""
+deviceinfo_flash_hashtype=""
 deviceinfo_flash_kernel_on_update=""
 deviceinfo_flash_offset_base=""
 deviceinfo_flash_offset_dtb=""
@@ -28,6 +30,8 @@ deviceinfo_flash_offset_kernel=""
 deviceinfo_flash_offset_ramdisk=""
 deviceinfo_flash_offset_second=""
 deviceinfo_flash_offset_tags=""
+deviceinfo_flash_os_patch_level=""
+deviceinfo_flash_os_version=""
 deviceinfo_flash_pagesize=""
 deviceinfo_generate_bootimg=""
 deviceinfo_generate_depthcharge_image=""
@@ -450,6 +454,15 @@ create_bootimg() {
 			exit 1
 		fi
 	fi
+	_optional_mkboot_args=""
+	[ -n "$deviceinfo_flash_board" ] && \
+		_optional_mkboot_args="${_optional_mkboot_args} --board $deviceinfo_flash_board"
+	[ -n "$deviceinfo_flash_hashtype" ] && \
+		_optional_mkboot_args="${_optional_mkboot_args} --hashtype $deviceinfo_flash_hashtype"
+	[ -n "$deviceinfo_flash_os_version" ] && \
+		_optional_mkboot_args="${_optional_mkboot_args} --os_version $deviceinfo_flash_os_version"
+	[ -n "$deviceinfo_flash_os_patch_level" ] && \
+		_optional_mkboot_args="${_optional_mkboot_args} --os_patch_level $deviceinfo_flash_os_patch_level"
 	# shellcheck disable=SC2039 disable=SC2086
 	"${MKBOOTIMG}" \
 		--kernel "${kernelfile}" \
@@ -461,6 +474,7 @@ create_bootimg() {
 		--ramdisk_offset "${deviceinfo_flash_offset_ramdisk}" \
 		--tags_offset "${deviceinfo_flash_offset_tags}" \
 		--pagesize "${deviceinfo_flash_pagesize}" \
+		${_optional_mkboot_args} \
 		${_second} \
 		${_dt} \
 		${deviceinfo_bootimg_custom_args} \
