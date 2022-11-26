@@ -445,14 +445,27 @@ create_bootimg() {
 
 	ramdisk="$input_dir/$initfs_filename"
 	if [ -n "$deviceinfo_bootimg_override_initramfs" ]; then
-		if [ -f "$input_dir/$deviceinfo_bootimg_override_initramfs" ]; then
-			log_arrow "initramfs: replace initramfs with file $input_dir/$deviceinfo_bootimg_override_initramfs"
-			ramdisk="$input_dir/$deviceinfo_bootimg_override_initramfs"
-		else
-			log "ERROR: file $input_dir/$deviceinfo_bootimg_override_initramfs not found,"
-			log "please, correct deviceinfo_bootimg_override_initramfs option value."
-			exit 1
-		fi
+		flash_pagesize_kb=$((deviceinfo_flash_pagesize / 1024))
+		for override_file in ${deviceinfo_bootimg_override_initramfs}; do
+			if [ -f "$input_dir/$override_file" ]; then
+				log_arrow "initramfs: adding to replacement file: $input_dir/$override_file"
+				block_aligned_size=$(get_size_of_files "$input_dir/$override_file")
+				log_arrow "initramfs: $input_dir/$override_file size is: ${block_aligned_size}K"
+				if [ $((block_aligned_size % flash_pagesize_kb)) -ne 0 ]; then
+					block_aligned_size=$((block_aligned_size / flash_pagesize_kb + 1))
+					fallocate -l "${block_aligned_size}K" "$input_dir/$override_file"
+					log_arrow "initramfs: aligning $input_dir/$override_file to ${block_aligned_size}K size"
+				fi
+				cat "$input_dir/$override_file" >> "$input_dir/initramfs_replacement"
+			else
+				log "ERROR: file $input_dir/$override_file not found,"
+				log "please, correct deviceinfo_bootimg_override_initramfs option value."
+				exit 1
+			fi
+		done
+
+		ramdisk="$input_dir/initramfs_replacement"
+		additional_files="$additional_files initramfs_replacement"
 	fi
 	_optional_mkboot_args=""
 	[ -n "$deviceinfo_flash_board" ] && \
