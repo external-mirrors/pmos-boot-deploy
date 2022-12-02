@@ -39,6 +39,9 @@ deviceinfo_legacy_uboot_load_address=""
 deviceinfo_legacy_uboot_image_name=""
 deviceinfo_flash_kernel_on_update=""
 
+# Declare used /etc/boot/boot-deploy variables to pass shellcheck (order alphabetically)
+distro_name=""
+
 # getopts / get_options set the following 'global' variables:
 kernel_filename=
 initfs_filename=
@@ -129,6 +132,20 @@ source_deviceinfo() {
 	fi
 	# shellcheck disable=SC1090
 	. "$deviceinfo"
+}
+
+source_boot_deploy_config() {
+	file="/etc/boot/boot-deploy"
+	if [ ! -e "$file" ]; then
+		echo "ERROR: $file not found!"
+		exit 1
+	fi
+	# shellcheck disable=SC1090
+	. "$file"
+	if [ -z "$distro_name" ]; then
+		echo "ERROR: distro_name from $file is not set"
+		exit 1
+	fi
 }
 
 # Required command check with useful error message
@@ -282,7 +299,7 @@ create_legacy_uboot_images() {
 	fi
 
 	if [ -z "$deviceinfo_legacy_uboot_image_name" ]; then
-		deviceinfo_legacy_uboot_image_name="postmarketos"
+		deviceinfo_legacy_uboot_image_name="$distro_name"
 	fi
 
 	# shellcheck disable=SC3060

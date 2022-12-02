@@ -19,6 +19,7 @@ fi
 
 get_options "$@"
 source_deviceinfo
+source_boot_deploy_config
 append_or_copy_dtb
 add_mtk_header
 create_uboot_files
