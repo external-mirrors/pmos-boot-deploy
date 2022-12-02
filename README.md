@@ -7,6 +7,8 @@ project to allow other distributions to utilize it too.
 
 ## Configuration
 
+### deviceinfo
+
 boot-deploy uses the "deviceinfo" format from postmarketOS, which is specified
 [here on the postmarketOS
 wiki.](https://wiki.postmarketos.org/wiki/Deviceinfo_reference)
@@ -18,6 +20,14 @@ Note: not all of the variables on the deviceinfo reference wiki page are used
 by boot-deploy, some of them are used internally by postmarketOS. For an up to
 date list of variables that boot-deploy can use at runtime, see the top of the
 `boot-deploy-functions.sh` file.
+
+### boot-deploy config
+
+boot-deploy stores its configuration in `/etc/boot/boot-deploy`. This file is
+sourced in shell script, so it must be in `var=value` format. For example:
+```
+distro_name="postmarketOS"
+```
 
 ## Usage
 
