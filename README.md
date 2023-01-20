@@ -35,15 +35,15 @@ crypttab_entry="root"
 
 ```
 Usage:
-    ./boot-deploy -i <file> -k <file> -d <path> [-o <path>] [files...]
+	./boot-deploy -i <file> -k <file> -d <path> [-o <path>] [files...]
 Where:
-    -i  filename of the initfs in the input directory
-    -k  filename of the kernel in the input directory
-    -d  path to directory containing input initfs, kernel
-    -o  path to output directory {default: /boot}
-    -c  path to deviceinfo {default: /etc/deviceinfo}
+	-i  filename of the initfs in the input directory
+	-k  filename of the kernel in the input directory
+	-d  path to directory containing input initfs, kernel
+	-o  path to output directory {default: /boot}
+	-c  path to deviceinfo {default: /etc/deviceinfo}
 
-        Additional files listed are copied from the input directory into the output directory as-is
+		Additional files listed are copied from the input directory into the output directory as-is
 ```
 
 The script implementation is found in `boot_deploy_functions.sh`, which it
