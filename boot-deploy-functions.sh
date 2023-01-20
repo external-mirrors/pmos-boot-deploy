@@ -56,13 +56,13 @@ deviceinfo="/etc/deviceinfo"
 
 usage() {
 	printf "Usage:
-    %s -i <file> -k <file> -d <path> [-o <path>] [files...]
+	%s -i <file> -k <file> -d <path> [-o <path>] [files...]
 Where:
-    -i  filename of the initfs in the input directory
-    -k  filename of the kernel in the input directory
-    -d  path to directory containing input initfs, kernel
-    -o  path to output directory {default: /boot}
-    -c  path to deviceinfo {default: /etc/deviceinfo}
+	-i  filename of the initfs in the input directory
+	-k  filename of the kernel in the input directory
+	-d  path to directory containing input initfs, kernel
+	-o  path to output directory {default: /boot}
+	-c  path to deviceinfo {default: /etc/deviceinfo}
 
 	Additional files listed are copied from the input directory into the output directory as-is\n" "$0"
 }
@@ -559,10 +559,10 @@ default $distro_name
 menu title boot prev kernel
 
 label $distro_name
-  kernel /$kernel_filename
-  fdt /$(basename "$deviceinfo_dtb").dtb
-  initrd /$initfs_filename
-  append $(get_cmdline)
+	kernel /$kernel_filename
+	fdt /$(basename "$deviceinfo_dtb").dtb
+	initrd /$initfs_filename
+	append $(get_cmdline)
 EOF
 	copy "/tmp/extlinux.conf" "/boot/extlinux/extlinux.conf"
 	rm /tmp/extlinux.conf
@@ -584,9 +584,9 @@ create_grub_config() {
 timeout=0
 
 menuentry "$distro_name" {
-  linux /$kernel_filename $(get_cmdline)
-  initrd /$initfs_filename
-  devicetree /$(basename "$deviceinfo_dtb").dtb
+	linux /$kernel_filename $(get_cmdline)
+	initrd /$initfs_filename
+	devicetree /$(basename "$deviceinfo_dtb").dtb
 }
 EOF
 	copy "/tmp/grub.cfg" "/boot/grub/grub.cfg"
@@ -653,8 +653,8 @@ get_cmdline() {
 		root_uuid=$(parse_crypttab_entry "$crypttab_entry")
 	fi
 
-	# When appropriate fstab entry does not exist, cmdline will not 
-	# be passed because of -n checks. In this case, postmarketOS 
+	# When appropriate fstab entry does not exist, cmdline will not
+	# be passed because of -n checks. In this case, postmarketOS
 	# init script will look for partitions according to pmOS_boot
 	# and pmOS_root labels.
 
