@@ -25,6 +25,13 @@ shellcheck:
   script:
     - .ci/shellcheck.sh
 
+editor-config:
+  <<: *only-default
+  before_script:
+    - adduser -D build
+  script:
+    - .ci/ec.sh
+
 tests:
   <<: *only-default
   script:
