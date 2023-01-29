@@ -764,3 +764,19 @@ find_dtb() {
 
 	echo "$dtb"
 }
+
+# $1: Message to log. Will be prefixed by an arrow.
+log_arrow() {
+	message="$1"
+
+	log "==> $message"
+}
+
+# $1: Message to log.
+log() {
+	message="$1"
+
+	# Redirect the message to stderr so it doesn't get captured as a "return
+	# value" in functions that use stdout for returning data.
+	echo "$message" 1>&2
+}
