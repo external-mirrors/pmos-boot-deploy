@@ -103,13 +103,13 @@ get_options() {
 	fi
 
 	if [ ! -d "$input_dir" ]; then
-		echo "Input directory does not exist: $output_dir"
+		log "Input directory does not exist: $output_dir"
 		exit 1
 	fi
 
 	for f in "$kernel_filename" "$initfs_filename" $additional_files; do
 		if [ ! -f "$input_dir/$f" ]; then
-			echo "File does not exist: $input_dir/$f"
+			log "File does not exist: $input_dir/$f"
 			exit 1
 		fi
 	done
@@ -120,7 +120,7 @@ get_options() {
 # filling the filesystem
 # $1: Path
 get_free_space() {
-	[ -z "$1" ] && echo "No path given to free space check" && exit 1
+	[ -z "$1" ] && log "No path given to free space check" && exit 1
 
 	# note: tr is used to reduce extra spaces in df output to a single space,
 	# so cut fields are consistent
@@ -131,7 +131,7 @@ get_free_space() {
 
 source_deviceinfo() {
 	if [ ! -e "$deviceinfo" ]; then
-		echo "ERROR: $deviceinfo not found!"
+		log "ERROR: $deviceinfo not found!"
 		exit 1
 	fi
 	# shellcheck disable=SC1090
@@ -141,21 +141,21 @@ source_deviceinfo() {
 source_boot_deploy_config() {
 	file="/etc/boot/boot-deploy"
 	if [ ! -e "$file" ]; then
-		echo "ERROR: $file not found!"
+		log "ERROR: $file not found!"
 		exit 1
 	fi
 	# shellcheck disable=SC1090
 	. "$file"
 	if [ -z "$crypttab_entry" ]; then
-		echo "ERROR: crypttab_entry from $file is not set"
+		log "ERROR: crypttab_entry from $file is not set"
 		exit 1
 	fi
 	if [ -z "$distro_name" ]; then
-		echo "ERROR: distro_name from $file is not set"
+		log "ERROR: distro_name from $file is not set"
 		exit 1
 	fi
 	if [ -z "$distro_prefix" ]; then
-		echo "ERROR: distro_prefix from $file is not set"
+		log "ERROR: distro_prefix from $file is not set"
 		exit 1
 	fi
 }
@@ -167,8 +167,8 @@ source_boot_deploy_config() {
 require_package()
 {
 	[ "$(command -v "$1")" = "" ] || return 0
-	echo "ERROR: 'deviceinfo_$3' is set, but the package '$2' was not"
-	echo "installed!"
+	log "ERROR: 'deviceinfo_$3' is set, but the package '$2' was not"
+	log "installed!"
 	exit 1
 }
 
@@ -189,7 +189,7 @@ copy() {
 	_size=$(get_size_of_files "$_src")
 	target_free_space=$(get_free_space "$_dest_dir")
 	if [ "$_size" -ge "$target_free_space" ]; then
-		echo "*NOT* copying file atomically (not enough free space at target): $f"
+		log "*NOT* copying file atomically (not enough free space at target): $f"
 		_dest_tmp="$_dest"
 	else
 		# copying atomically, by copying to a temp file in the target filesystem first
@@ -202,8 +202,8 @@ copy() {
 	_dest_chksum="$(md5sum "$_dest_tmp" | cut -d' ' -f1)"
 
 	if [ "$_src_chksum" != "$_dest_chksum" ]; then
-		echo "Checksums do not match: $_src --> $_dest_tmp"
-		echo "Have: $_src_chksum, expected: $_dest_chksum"
+		log "Checksums do not match: $_src --> $_dest_tmp"
+		log "Have: $_src_chksum, expected: $_dest_chksum"
 		exit 1
 	fi
 
@@ -220,16 +220,16 @@ copy() {
 append_or_copy_dtb() {
 	if [ -z "${deviceinfo_dtb}" ]; then
 		if [ "$deviceinfo_header_version" = "2" ]; then
-			echo "ERROR: deviceinfo_header_version is 2, but"
-			echo "'deviceinfo_dtb' is missing. Set 'deviceinfo_dtb'"
-			echo "to the device tree blob for your device."
-			echo "See also: <https://postmarketos.org/deviceinfo>"
+			log "ERROR: deviceinfo_header_version is 2, but"
+			log "'deviceinfo_dtb' is missing. Set 'deviceinfo_dtb'"
+			log "to the device tree blob for your device."
+			log "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		else
 			return 0
 		fi
 	fi
-	echo "==> kernel: device-tree blob operations"
+	log_arrow "kernel: device-tree blob operations"
 
 	dtb=""
 	for filename in $deviceinfo_dtb; do
@@ -240,14 +240,14 @@ append_or_copy_dtb() {
 	dtb=$(echo "$dtb" | xargs)
 
 	if [ "$deviceinfo_header_version" = "2" ] && [ "$(echo "$dtb" | tr ' ' '\n' | wc -l)" -gt 1 ]; then
-		echo "ERROR: deviceinfo_header_version is 2, but"
-		echo "'deviceinfo_dtb' specifies more than one dtb!"
+		log "ERROR: deviceinfo_header_version is 2, but"
+		log "'deviceinfo_dtb' specifies more than one dtb!"
 		exit 1
 	fi
 
 	_outfile="$input_dir/$kernel_filename-dtb"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
-		echo "==> kernel: appending device-tree ${deviceinfo_dtb}"
+		log_arrow "kernel: appending device-tree ${deviceinfo_dtb}"
 		# shellcheck disable=SC2086
 		cat "$input_dir/$kernel_filename" $dtb > "$_outfile"
 		additional_files="$additional_files $(basename "$_outfile")"
@@ -267,12 +267,12 @@ add_mtk_header() {
 
 	_infile="$input_dir/$initfs_filename"
 	_outfile="$input_dir/$initfs_filename.mtk"
-	echo "==> initramfs: adding Mediatek header"
+	log_arrow "initramfs: adding Mediatek header"
 	mtk-mkimage ROOTFS "$_infile" "$_outfile"
 	copy "$_outfile" "$_infile"
 	rm "$_outfile"
 
-	echo "==> kernel: adding Mediatek header"
+	log_arrow "kernel: adding Mediatek header"
 	# shellcheck disable=SC3060
 	kernel="$input_dir/$kernel_filename"
 	rm -f "${kernel}-mtk"
@@ -294,13 +294,13 @@ create_legacy_uboot_images() {
 	[ "${deviceinfo_generate_legacy_uboot_initfs}" = "true" ] || return 0
 	require_package "mkimage" "u-boot-tools" "generate_legacy_uboot_initfs"
 
-	echo "==> initramfs: creating uInitrd"
+	log_arrow "initramfs: creating uInitrd"
 	_infile="$input_dir/$initfs_filename"
 	_outfile="$input_dir/uInitrd"
 	mkimage -A $arch -T ramdisk -C none -n uInitrd -d "$_infile" \
 		"$_outfile" || exit 1
 
-	echo "==> kernel: creating uImage"
+	log_arrow "kernel: creating uImage"
 	kernelfile="$input_dir/$kernel_filename"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
 		kernelfile="$input_dir/$kernel_filename-dtb"
@@ -328,11 +328,11 @@ create_legacy_uboot_images() {
 }
 
 create_uboot_fit_image() {
-	echo "==> u-boot: creating FIT images"
+	log_arrow "u-boot: creating FIT images"
 	[ "${deviceinfo_generate_uboot_fit_images}" = "true" ] || return 0
 	fit_source_files=$(ls -A "$input_dir"/*.its)
 	if [ -z "$fit_source_files" ]; then
-		echo "==> u-boot: no FIT image source files found"
+		log_arrow "u-boot: no FIT image source files found"
 		return 0
 	fi
 	require_package "mkimage" "u-boot-tools" "generate_bootimg_uboot"
@@ -340,7 +340,7 @@ create_uboot_fit_image() {
 	require_package "dtc" "dtc" "generate_bootimg_uboot_and_fit_image"
 
 	for uboot_fit_source in $fit_source_files; do
-		echo "==> u-boot: creating FIT image from $uboot_fit_source file"
+		log_arrow "u-boot: creating FIT image from $uboot_fit_source file"
 		uboot_fit_image=$(echo "$uboot_fit_source" | sed -e 's/\.its/.itb/g')
 		# shellcheck disable=SC3060
 		mkimage -f "$uboot_fit_source" "$uboot_fit_image" || exit 1
@@ -364,28 +364,28 @@ create_bootimg() {
 		MKBOOTIMG=mkbootimg-osm0sis
 	fi
 
-	echo "==> initramfs: creating boot.img"
+	log_arrow "initramfs: creating boot.img"
 	_base="${deviceinfo_flash_offset_base}"
 	[ -z "$_base" ] && _base="0x10000000"
 
 	if [ -n "$deviceinfo_bootimg_override_payload" ]; then
 		if [ -f "$input_dir/$deviceinfo_bootimg_override_payload" ]; then
 			payload="$input_dir/$deviceinfo_bootimg_override_payload"
-			echo "==> initramfs: replace kernel with file $payload"
+			log_arrow "initramfs: replace kernel with file $payload"
 			if [ "$deviceinfo_bootimg_override_payload_compression" = "gzip" ]; then
-				echo "==> initramfs: gzip payload replacement"
+				log_arrow "initramfs: gzip payload replacement"
 				gzip "$payload"
 				kernelfile="$payload.gz"
 			else
 				kernelfile="$payload"
 			fi
 			if [ -n "$deviceinfo_bootimg_override_payload_append_dtb" ]; then
-				echo "==> initramfs: append $deviceinfo_bootimg_override_payload_append_dtb at payload end"
+				log_arrow "initramfs: append $deviceinfo_bootimg_override_payload_append_dtb at payload end"
 				cat "$input_dir/$deviceinfo_bootimg_override_payload_append_dtb" >> "$kernelfile"
 			fi
 		else
-			echo "File $input_dir/$deviceinfo_bootimg_override_payload not found,"
-			echo "please, correct deviceinfo_bootimg_override_payload option value."
+			log "File $input_dir/$deviceinfo_bootimg_override_payload not found,"
+			log "please, correct deviceinfo_bootimg_override_payload option value."
 			exit 1
 		fi
 	else
@@ -404,10 +404,10 @@ create_bootimg() {
 	_second=""
 	if [ "${deviceinfo_bootimg_dtb_second}" = "true" ]; then
 		if [ -z "${deviceinfo_dtb}" ]; then
-			echo "ERROR: deviceinfo_bootimg_dtb_second is set, but"
-			echo "'deviceinfo_dtb' is missing. Set 'deviceinfo_dtb'"
-			echo "to the device tree blob for your device."
-			echo "See also: <https://postmarketos.org/deviceinfo>"
+			log "ERROR: deviceinfo_bootimg_dtb_second is set, but"
+			log "'deviceinfo_dtb' is missing. Set 'deviceinfo_dtb'"
+			log "to the device tree blob for your device."
+			log "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
 		dtb=$(find_dtb "$deviceinfo_dtb")
@@ -417,23 +417,23 @@ create_bootimg() {
 	if [ "${deviceinfo_bootimg_qcdt}" = "true" ]; then
 		_dt="--dt /boot/dt.img"
 		if ! [ -e "/boot/dt.img" ]; then
-			echo "ERROR: File not found: /boot/dt.img, but"
-			echo "'deviceinfo_bootimg_qcdt' is set. Please verify that your"
-			echo "device is a QCDT device by analyzing the boot.img file"
-			echo "(e.g. 'pmbootstrap bootimg_analyze path/to/twrp.img')"
-			echo "and based on that, set the deviceinfo variable to false or"
-			echo "adjust your linux APKBUILD to properly generate the dt.img"
-			echo "file. See also: <https://postmarketos.org/deviceinfo>"
+			log "ERROR: File not found: /boot/dt.img, but"
+			log "'deviceinfo_bootimg_qcdt' is set. Please verify that your"
+			log "device is a QCDT device by analyzing the boot.img file"
+			log "(e.g. 'pmbootstrap bootimg_analyze path/to/twrp.img')"
+			log "and based on that, set the deviceinfo variable to false or"
+			log "adjust your linux APKBUILD to properly generate the dt.img"
+			log "file. See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
 	fi
 
 	if [ "$deviceinfo_header_version" = "2" ] && [ -z "$deviceinfo_bootimg_custom_args" ]; then
 		if [ -z "$deviceinfo_flash_offset_dtb" ]; then
-			echo "ERROR: deviceinfo_header_version is 2, but"
-			echo "'deviceinfo_flash_offset_dtb' is missing. Set it"
-			echo "to the device tree blob offset for your device."
-			echo "See also: <https://postmarketos.org/deviceinfo>"
+			log "ERROR: deviceinfo_header_version is 2, but"
+			log "'deviceinfo_flash_offset_dtb' is missing. Set it"
+			log "to the device tree blob offset for your device."
+			log "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
 		deviceinfo_bootimg_custom_args="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $dtb"
@@ -442,11 +442,11 @@ create_bootimg() {
 	ramdisk="$input_dir/$initfs_filename"
 	if [ -n "$deviceinfo_bootimg_override_initramfs" ]; then
 		if [ -f "$input_dir/$deviceinfo_bootimg_override_initramfs" ]; then
-			echo "==> initramfs: replace initramfs with file $input_dir/$deviceinfo_bootimg_override_initramfs"
+			log_arrow "initramfs: replace initramfs with file $input_dir/$deviceinfo_bootimg_override_initramfs"
 			ramdisk="$input_dir/$deviceinfo_bootimg_override_initramfs"
 		else
-			echo "ERROR: file $input_dir/$deviceinfo_bootimg_override_initramfs not found,"
-			echo "please, correct deviceinfo_bootimg_override_initramfs option value."
+			log "ERROR: file $input_dir/$deviceinfo_bootimg_override_initramfs not found,"
+			log "please, correct deviceinfo_bootimg_override_initramfs option value."
 			exit 1
 		fi
 	fi
@@ -470,7 +470,7 @@ create_bootimg() {
 		sh "${deviceinfo_mkinitfs_postprocess}" "$input_dir/$initfs_filename"
 	fi
 	if [ "${deviceinfo_bootimg_blobpack}" = "true" ] || [ "${deviceinfo_bootimg_blobpack}" = "sign" ]; then
-		echo "==> initramfs: creating blob"
+		log_arrow "initramfs: creating blob"
 		_flags=""
 		if [ "${deviceinfo_bootimg_blobpack}" = "sign" ]; then
 			_flags="-s"
@@ -482,7 +482,7 @@ create_bootimg() {
 		copy "${bootimg}.blob" "$bootimg"
 	fi
 	if [ "${deviceinfo_bootimg_append_seandroidenforce}" = "true" ]; then
-		echo "==> initramfs: appending 'SEANDROIDENFORCE' to boot.img"
+		log_arrow "initramfs: appending 'SEANDROIDENFORCE' to boot.img"
 		printf "SEANDROIDENFORCE" >> "$bootimg"
 	fi
 	additional_files="$additional_files $(basename "$bootimg")"
@@ -494,11 +494,11 @@ flash_updated_boot_parts() {
 	[ -f /sbin/pmos-update-kernel ] || return 0
 	# Don't run when in a pmOS chroot
 	if [ -f "/in-pmbootstrap" ]; then
-		echo "==> Not flashing boot in chroot"
+		log_arrow "Not flashing boot in chroot"
 		return 0
 	fi
 
-	echo "==> Flashing boot image"
+	log_arrow "Flashing boot image"
 	pmos-update-kernel
 }
 
@@ -508,10 +508,10 @@ create_depthcharge_kernel_image() {
 
 	require_package "depthchargectl" "depthcharge-tools" "generate_depthcharge_image"
 
-	echo "==> Generating vmlinuz.kpart"
+	log_arrow "Generating vmlinuz.kpart"
 
 	if [ -z "${deviceinfo_depthcharge_board}" ]; then
-		echo "ERROR: deviceinfo_depthcharge_board is not set"
+		log "ERROR: deviceinfo_depthcharge_board is not set"
 		exit 1
 	fi
 
@@ -533,11 +533,11 @@ flash_updated_depthcharge_kernel() {
 
 	# Don't run when in a pmOS chroot
 	if [ -f "/in-pmbootstrap" ]; then
-		echo "==> Not flashing vmlinuz.kpart in chroot"
+		log_arrow "Not flashing vmlinuz.kpart in chroot"
 		return 0
 	fi
 
-	echo "==> Flashing depthcharge kernel image"
+	log_arrow "Flashing depthcharge kernel image"
 	pmos-update-depthcharge-kernel
 }
 
@@ -545,13 +545,13 @@ create_extlinux_config() {
 	[ "${deviceinfo_generate_extlinux_config}" = "true" ] || return 0
 
 	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
-		echo "ERROR: deviceinfo_dtb contains more than one dtb"
+		log "ERROR: deviceinfo_dtb contains more than one dtb"
 		exit 1
 	fi
 
 	mkdir -p /boot/extlinux
 
-	echo "==> Generating /boot/extlinux/extlinux.conf"
+	log_arrow "Generating /boot/extlinux/extlinux.conf"
 
 	cat <<EOF > /tmp/extlinux.conf
 timeout 1
@@ -572,13 +572,13 @@ create_grub_config() {
 	[ "${deviceinfo_generate_grub_config}" = "true" ] || return 0
 
 	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
-		echo "ERROR: deviceinfo_dtb contains more than one dtb"
+		log "ERROR: deviceinfo_dtb contains more than one dtb"
 		exit 1
 	fi
 
 	mkdir -p /boot/grub
 
-	echo "==> Generating /boot/grub/grub.cfg"
+	log_arrow "Generating /boot/grub/grub.cfg"
 
 	cat <<EOF > /tmp/grub.cfg
 timeout=0
@@ -682,7 +682,7 @@ check_destination_free_space() {
 	# each file is checked to make sure the target dir can hold the new copy of
 	# it before the old file is atomically replaced.
 
-	echo "==> Checking free space at $output_dir"
+	log_arrow "Checking free space at $output_dir"
 	files="$1"
 
 	# First check is that target has enough space for all new files/sizes
@@ -705,8 +705,8 @@ check_destination_free_space() {
 
 	# does the target have enough free space for diff size of all new files?
 	if [ "$total_diff_size" -ge "$target_free_space" ]; then
-		echo "Destination filesystem does not have enough free space!"
-		echo "Need $total_diff_size kilobytes, have $target_free_space kilobytes"
+		log "Destination filesystem does not have enough free space!"
+		log "Need $total_diff_size kilobytes, have $target_free_space kilobytes"
 		exit 1
 	fi
 
@@ -717,8 +717,8 @@ check_destination_free_space() {
 		f_size=$(get_size_of_files "$f")
 		# 2) does target have enough free space for the new file size?
 		if [ "$f_size" -ge "$target_free_space" ]; then
-			echo "Destination filesystem does not have enough free space to copy this file atomically: $f"
-			echo "Need $f_size kilobytes, have $target_free_space kilobytes"
+			log "Destination filesystem does not have enough free space to copy this file atomically: $f"
+			log "Need $f_size kilobytes, have $target_free_space kilobytes"
 		fi
 	done
 	echo "... OK!"
@@ -729,7 +729,7 @@ find_dtb() {
 	filename="$1"
 
 	if [ -z "$filename" ]; then
-		echo "ERROR: dtb name was an empty string"
+		log "ERROR: dtb name was an empty string"
 		exit 1
 	fi
 
@@ -755,10 +755,10 @@ find_dtb() {
 		dtb_found="true"
 	fi
 	if [ "$dtb_found" = "false" ]; then
-		echo "ERROR: Unable to find $filename.dtb in the following locations:"
-		echo "    - /boot/dtbs/"
-		echo "    - /boot/dtbs-*/"
-		echo "    - /usr/share/dtb/"
+		log "ERROR: Unable to find $filename.dtb in the following locations:"
+		log "    - /boot/dtbs/"
+		log "    - /boot/dtbs-*/"
+		log "    - /usr/share/dtb/"
 		exit 1
 	fi
 
