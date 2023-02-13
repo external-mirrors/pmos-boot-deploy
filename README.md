@@ -21,10 +21,13 @@ by boot-deploy, some of them are used internally by postmarketOS. For an up to
 date list of variables that boot-deploy can use at runtime, see the top of the
 `boot-deploy-functions.sh` file.
 
-### boot-deploy config
+### OS-level Customization
 
-boot-deploy stores its configuration in `/etc/boot/boot-deploy`. This file is
-sourced in shell script, so it must be in `var=value` format. For example:
+`boot-deploy` requires a file at `/usr/share/boot-deploy/os-customization`,
+which is used to provide OS distribution customization for some aspects of
+its output. This file is sourced in shell script, so it must be in
+`var=value` format. It must contain the following variables (the given values
+are just examples):
 ```
 distro_name="postmarketOS"
 distro_prefix="pmos"

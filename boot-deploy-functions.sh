@@ -43,7 +43,7 @@ deviceinfo_legacy_uboot_load_address=""
 deviceinfo_legacy_uboot_image_name=""
 deviceinfo_flash_kernel_on_update=""
 
-# Declare used /etc/boot/boot-deploy variables to pass shellcheck (order alphabetically)
+# Declare used /usr/share/boot-deploy/os-customization variables to pass shellcheck (order alphabetically)
 crypttab_entry=""
 distro_name=""
 distro_prefix=""
@@ -206,7 +206,7 @@ source_deviceinfo() {
 }
 
 source_boot_deploy_config() {
-	local _file="/etc/boot/boot-deploy"
+	local _file="/usr/share/boot-deploy/os-customization"
 	if [ ! -e "$_file" ]; then
 		log "ERROR: $_file not found!"
 		exit 1
