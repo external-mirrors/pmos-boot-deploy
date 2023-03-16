@@ -574,11 +574,9 @@ create_extlinux_config() {
 		exit 1
 	fi
 
-	mkdir -p /boot/extlinux
+	log_arrow "Generating extlinux.conf"
 
-	log_arrow "Generating /boot/extlinux/extlinux.conf"
-
-	cat <<EOF > /tmp/extlinux.conf
+	cat <<EOF > "$input_dir/extlinux.conf"
 timeout 1
 default $distro_name
 menu title boot prev kernel
@@ -589,8 +587,7 @@ label $distro_name
 	initrd /$initfs_filename
 	append $(get_cmdline)
 EOF
-	copy "/tmp/extlinux.conf" "/boot/extlinux/extlinux.conf"
-	rm /tmp/extlinux.conf
+	additional_files="$additional_files extlinux.conf:/extlinux/extlinux.conf"
 }
 
 create_grub_config() {
