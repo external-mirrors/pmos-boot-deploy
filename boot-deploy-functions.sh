@@ -284,7 +284,7 @@ append_or_copy_dtb() {
 	fi
 
 	_outfile="$work_dir/$kernel_filename-dtb"
-	if [ "${deviceinfo_append_dtb}" = "true" ]; then
+	if equal "$deviceinfo_append_dtb" "true"; then
 		log_arrow "kernel: appending device-tree ${deviceinfo_dtb}"
 		# shellcheck disable=SC2086
 		cat "$work_dir/$kernel_filename" $dtb > "$_outfile"
@@ -300,7 +300,7 @@ append_or_copy_dtb() {
 
 # Add Mediatek header to kernel & initramfs
 add_mtk_header() {
-	[ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ] || return 0
+	equal "$deviceinfo_bootimg_mtk_mkimage" "true" || return 0
 	require_package "mtk-mkimage" "mtk-mkimage" "bootimg_mtk_mkimage"
 
 	_infile="$work_dir/$initfs_filename"
@@ -325,11 +325,11 @@ create_uboot_files() {
 
 create_legacy_uboot_images() {
 	arch="arm"
-	if [ "${deviceinfo_arch}" = "aarch64" ]; then
+	if equal "$deviceinfo_arch" "aarch64"; then
 		arch="arm64"
 	fi
 
-	[ "${deviceinfo_generate_legacy_uboot_initfs}" = "true" ] || return 0
+	equal "$deviceinfo_generate_legacy_uboot_initfs" "true" || return 0
 	require_package "mkimage" "u-boot-tools" "generate_legacy_uboot_initfs"
 
 	log_arrow "initramfs: creating uInitrd"
@@ -340,7 +340,7 @@ create_legacy_uboot_images() {
 
 	log_arrow "kernel: creating uImage"
 	kernelfile="$work_dir/$kernel_filename"
-	if [ "${deviceinfo_append_dtb}" = "true" ]; then
+	if equal "$deviceinfo_append_dtb" "true"; then
 		kernelfile="$work_dir/$kernel_filename-dtb"
 	fi
 
@@ -367,7 +367,7 @@ create_legacy_uboot_images() {
 
 create_uboot_fit_image() {
 	log_arrow "u-boot: creating FIT images"
-	[ "${deviceinfo_generate_uboot_fit_images}" = "true" ] || return 0
+	equal "$deviceinfo_generate_uboot_fit_images" "true" || return 0
 	fit_source_files=$(ls -A "$work_dir"/*.its)
 	if [ -z "$fit_source_files" ]; then
 		log_arrow "u-boot: no FIT image source files found"
@@ -390,11 +390,11 @@ create_uboot_fit_image() {
 
 # Android devices
 create_bootimg() {
-	[ "${deviceinfo_generate_bootimg}" = "true" ] || return 0
+	equal "$deviceinfo_generate_bootimg" "true" || return 0
 	# shellcheck disable=SC3060
 	bootimg="$work_dir/boot.img"
 
-	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
+	if equal "$deviceinfo_bootimg_pxa" "true"; then
 		require_package "pxa-mkbootimg" "pxa-mkbootimg" "bootimg_pxa"
 		MKBOOTIMG=pxa-mkbootimg
 	else
@@ -410,7 +410,7 @@ create_bootimg() {
 		if [ -f "$work_dir/$deviceinfo_bootimg_override_payload" ]; then
 			payload="$work_dir/$deviceinfo_bootimg_override_payload"
 			log_arrow "initramfs: replace kernel with file $payload"
-			if [ "$deviceinfo_bootimg_override_payload_compression" = "gzip" ]; then
+			if equal "$deviceinfo_bootimg_override_payload_compression" "gzip"; then
 				log_arrow "initramfs: gzip payload replacement"
 				gzip "$payload"
 				kernelfile="$payload.gz"
@@ -429,18 +429,18 @@ create_bootimg() {
 	else
 		# shellcheck disable=SC3060
 		kernelfile="$work_dir/$kernel_filename"
-		if [ "${deviceinfo_append_dtb}" = "true" ]; then
+		if equal "$deviceinfo_append_dtb" "true"; then
 			kernelfile="${kernelfile}-dtb"
 		fi
 
-		if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
+		if equal "$deviceinfo_bootimg_mtk_mkimage" "true"; then
 			kernelfile="${kernelfile}-mtk"
 		fi
 	fi
 
 
 	_second=""
-	if [ "${deviceinfo_bootimg_dtb_second}" = "true" ]; then
+	if equal "$deviceinfo_bootimg_dtb_second" "true"; then
 		if [ -z "${deviceinfo_dtb}" ]; then
 			log "ERROR: deviceinfo_bootimg_dtb_second is set, but"
 			log "'deviceinfo_dtb' is missing. Set 'deviceinfo_dtb'"
@@ -452,7 +452,7 @@ create_bootimg() {
 		_second="--second $dtb"
 	fi
 	_dt=""
-	if [ "${deviceinfo_bootimg_qcdt}" = "true" ]; then
+	if equal "$deviceinfo_bootimg_qcdt" "true"; then
 		_dt="--dt /boot/dt.img"
 		if ! [ -e "/boot/dt.img" ]; then
 			log "ERROR: File not found: /boot/dt.img, but"
@@ -510,7 +510,7 @@ create_bootimg() {
 	if [ "${deviceinfo_bootimg_blobpack}" = "true" ] || [ "${deviceinfo_bootimg_blobpack}" = "sign" ]; then
 		log_arrow "initramfs: creating blob"
 		_flags=""
-		if [ "${deviceinfo_bootimg_blobpack}" = "sign" ]; then
+		if equal "$deviceinfo_bootimg_blobpack" "sign"; then
 			_flags="-s"
 		fi
 		# shellcheck disable=SC3060
@@ -519,7 +519,7 @@ create_bootimg() {
 		# shellcheck disable=SC3060
 		copy "${bootimg}.blob" "$bootimg"
 	fi
-	if [ "${deviceinfo_bootimg_append_seandroidenforce}" = "true" ]; then
+	if equal "$deviceinfo_bootimg_append_seandroidenforce" "true"; then
 		log_arrow "initramfs: appending 'SEANDROIDENFORCE' to boot.img"
 		printf "SEANDROIDENFORCE" >> "$bootimg"
 	fi
@@ -527,7 +527,7 @@ create_bootimg() {
 }
 
 flash_updated_boot_parts() {
-	[ "${deviceinfo_flash_kernel_on_update}" = "true" ] || return 0
+	equal "$deviceinfo_flash_kernel_on_update" "true" || return 0
 	# If postmarketos-update-kernel is not installed then nop
 	[ -f /sbin/pmos-update-kernel ] || return 0
 	# Don't run when in a pmOS chroot
@@ -542,7 +542,7 @@ flash_updated_boot_parts() {
 
 # Chrome OS devices
 create_depthcharge_kernel_image() {
-	[ "${deviceinfo_generate_depthcharge_image}" = "true" ] || return 0
+	equal "$deviceinfo_generate_depthcharge_image" "true" || return 0
 
 	require_package "depthchargectl" "depthcharge-tools" "generate_depthcharge_image"
 
@@ -565,7 +565,7 @@ create_depthcharge_kernel_image() {
 }
 
 flash_updated_depthcharge_kernel() {
-	[ "${deviceinfo_generate_depthcharge_image}" = "true" ] || return 0
+	equal "$deviceinfo_generate_depthcharge_image" "true" || return 0
 
 	[ -f /sbin/pmos-update-depthcharge-kernel ] || return 0
 
@@ -580,7 +580,7 @@ flash_updated_depthcharge_kernel() {
 }
 
 create_extlinux_config() {
-	[ "${deviceinfo_generate_extlinux_config}" = "true" ] || return 0
+	equal "$deviceinfo_generate_extlinux_config" "true" || return 0
 
 	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
 		log "ERROR: deviceinfo_dtb contains more than one dtb"
@@ -604,7 +604,7 @@ EOF
 }
 
 create_grub_config() {
-	[ "${deviceinfo_generate_grub_config}" = "true" ] || return 0
+	equal "$deviceinfo_generate_grub_config" "true" || return 0
 
 	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
 		log "ERROR: deviceinfo_dtb contains more than one dtb"
