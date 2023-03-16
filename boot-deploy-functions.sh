@@ -125,6 +125,7 @@ get_free_space() {
 
 	# note: tr is used to reduce extra spaces in df output to a single space,
 	# so cut fields are consistent
+	local _df_out
 	_df_out="$(df -P "$1" | tail -1 | awk '{ print $4; }')"
 	_df_out="$(echo "$_df_out"/0.9 | bc -s)"
 	echo "$_df_out"
@@ -140,23 +141,23 @@ source_deviceinfo() {
 }
 
 source_boot_deploy_config() {
-	file="/etc/boot/boot-deploy"
-	if [ ! -e "$file" ]; then
-		log "ERROR: $file not found!"
+	local _file="/etc/boot/boot-deploy"
+	if [ ! -e "$_file" ]; then
+		log "ERROR: $_file not found!"
 		exit 1
 	fi
 	# shellcheck disable=SC1090
-	. "$file"
+	. "$_file"
 	if [ -z "$crypttab_entry" ]; then
-		log "ERROR: crypttab_entry from $file is not set"
+		log "ERROR: crypttab_entry from $_file is not set"
 		exit 1
 	fi
 	if [ -z "$distro_name" ]; then
-		log "ERROR: distro_name from $file is not set"
+		log "ERROR: distro_name from $_file is not set"
 		exit 1
 	fi
 	if [ -z "$distro_prefix" ]; then
-		log "ERROR: distro_prefix from $file is not set"
+		log "ERROR: distro_prefix from $_file is not set"
 		exit 1
 	fi
 }
@@ -178,28 +179,33 @@ require_package()
 # $1: src file to copy
 # $2: destination file to copy to
 copy() {
-	_src="$1"
-	_dest="$2"
+	local _src="$1"
+	local _dest="$2"
+	local _dest_dir
 	_dest_dir="$(dirname "$_dest")"
 
 	[ ! -d "$_dest_dir" ] && mkdir -p "$_dest_dir"
 
+	local _src_chksum
 	_src_chksum="$(md5sum "$_src" | cut -d' ' -f1)"
 
 	# does target have enough free space to copy atomically?
+	local _size
 	_size=$(get_size_of_files "$_src")
-	target_free_space=$(get_free_space "$_dest_dir")
-	if [ "$_size" -ge "$target_free_space" ]; then
-		log "*NOT* copying file atomically (not enough free space at target): $f"
-		_dest_tmp="$_dest"
+	local _target_free_space
+	_target_free_space=$(get_free_space "$_dest_dir")
+	if [ "$_size" -ge "$_target_free_space" ]; then
+		local _dest_tmp="$_dest"
+		log "*NOT* copying file atomically (not enough free space at target): $_dest_dir"
 	else
 		# copying atomically, by copying to a temp file in the target filesystem first
-		_dest_tmp="${_dest}".tmp
+		local _dest_tmp="${_dest}".tmp
 	fi
 
 	cp "$_src" "$_dest_tmp"
 	sync "$_dest_dir"
 
+	local _dest_chksum
 	_dest_chksum="$(md5sum "$_dest_tmp" | cut -d' ' -f1)"
 
 	if [ "$_src_chksum" != "$_dest_chksum" ]; then
@@ -227,8 +233,9 @@ copy() {
 # $output_dir.
 copy_files() {
 	for f in "$@"; do
+		local _src
 		_src="$(echo "$f" | cut -d':' -f1 -s)"
-		_dest=
+		local _dest=
 		if [ -z "$_src" ]; then
 			_src="$f"
 			_dest="$output_dir/$(basename "$_src")"
@@ -257,31 +264,32 @@ append_or_copy_dtb() {
 	fi
 	log_arrow "kernel: device-tree blob operations"
 
-	dtb=""
-	for filename in $deviceinfo_dtb; do
-		dtb="$dtb $(find_dtb "$filename")"
+	local _dtb=""
+	for _filename in $deviceinfo_dtb; do
+		dtb="$_dtb $(find_dtb "$_filename")"
 	done
 
 	# Remove excess whitespace
-	dtb=$(echo "$dtb" | xargs)
+	_dtb=$(echo "$_dtb" | xargs)
 
-	if [ "$deviceinfo_header_version" = "2" ] && [ "$(echo "$dtb" | tr ' ' '\n' | wc -l)" -gt 1 ]; then
+	if [ "$deviceinfo_header_version" = "2" ] && [ "$(echo "$_dtb" | tr ' ' '\n' | wc -l)" -gt 1 ]; then
 		log "ERROR: deviceinfo_header_version is 2, but"
 		log "'deviceinfo_dtb' specifies more than one dtb!"
 		exit 1
 	fi
 
-	_outfile="$work_dir/$kernel_filename-dtb"
+	local _outfile="$work_dir/$kernel_filename-dtb"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
 		log_arrow "kernel: appending device-tree ${deviceinfo_dtb}"
 		# shellcheck disable=SC2086
 		cat "$work_dir/$kernel_filename" $dtb > "$_outfile"
 		additional_files="$additional_files $(basename "$_outfile")"
 	else
-		for dtb_path in $dtb; do
-			dtb_filename=$(basename "$dtb_path")
-			copy "$dtb_path" "$work_dir/$dtb_filename"
-			additional_files="$additional_files ${dtb_filename}"
+		for _dtb_path in $dtb; do
+			local _dtb_filename
+			_dtb_filename=$(basename "$_dtb_path")
+			copy "$_dtb_path" "$work_dir/$_dtb_filename"
+			additional_files="$additional_files ${_dtb_filename}"
 		done
 	fi
 }
@@ -291,8 +299,8 @@ add_mtk_header() {
 	[ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ] || return 0
 	require_package "mtk-mkimage" "mtk-mkimage" "bootimg_mtk_mkimage"
 
-	_infile="$work_dir/$initfs_filename"
-	_outfile="$work_dir/$initfs_filename.mtk"
+	local _infile="$work_dir/$initfs_filename"
+	local _outfile="$work_dir/$initfs_filename.mtk"
 	log_arrow "initramfs: adding Mediatek header"
 	mtk-mkimage ROOTFS "$_infile" "$_outfile"
 	copy "$_outfile" "$_infile"
@@ -300,10 +308,10 @@ add_mtk_header() {
 
 	log_arrow "kernel: adding Mediatek header"
 	# shellcheck disable=SC3060
-	kernel="$work_dir/$kernel_filename"
-	rm -f "${kernel}-mtk"
-	mtk-mkimage KERNEL "$kernel" "${kernel}-mtk"
-	additional_files="$additional_files $(basename "${kernel}"-mtk)"
+	local _kernel="$work_dir/$kernel_filename"
+	rm -f "${_kernel}-mtk"
+	mtk-mkimage KERNEL "$_kernel" "${_kernel}-mtk"
+	additional_files="$additional_files $(basename "${_kernel}"-mtk)"
 }
 
 create_uboot_files() {
@@ -312,24 +320,24 @@ create_uboot_files() {
 }
 
 create_legacy_uboot_images() {
-	arch="arm"
+	local _arch="arm"
 	if [ "${deviceinfo_arch}" = "aarch64" ]; then
-		arch="arm64"
+		_arch="arm64"
 	fi
 
 	[ "${deviceinfo_generate_legacy_uboot_initfs}" = "true" ] || return 0
 	require_package "mkimage" "u-boot-tools" "generate_legacy_uboot_initfs"
 
 	log_arrow "initramfs: creating uInitrd"
-	_infile="$work_dir/$initfs_filename"
-	_outfile="$work_dir/uInitrd"
-	mkimage -A $arch -T ramdisk -C none -n uInitrd -d "$_infile" \
+	local _infile="$work_dir/$initfs_filename"
+	local _outfile="$work_dir/uInitrd"
+	mkimage -A "$_arch" -T ramdisk -C none -n uInitrd -d "$_infile" \
 		"$_outfile" || exit 1
 
 	log_arrow "kernel: creating uImage"
-	kernelfile="$work_dir/$kernel_filename"
+	local _kernelfile="$work_dir/$kernel_filename"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
-		kernelfile="$work_dir/$kernel_filename-dtb"
+		_kernelfile="$work_dir/$kernel_filename-dtb"
 	fi
 
 	if [ -z "$deviceinfo_legacy_uboot_load_address" ]; then
@@ -341,9 +349,9 @@ create_legacy_uboot_images() {
 	fi
 
 	# shellcheck disable=SC3060
-	mkimage -A $arch -O linux -T kernel -C none -a "$deviceinfo_legacy_uboot_load_address" \
+	mkimage -A "$_arch" -O linux -T kernel -C none -a "$deviceinfo_legacy_uboot_load_address" \
 		-e "$deviceinfo_legacy_uboot_load_address" \
-		-n "$deviceinfo_legacy_uboot_image_name" -d "$kernelfile" "$work_dir/uImage" || exit 1
+		-n "$deviceinfo_legacy_uboot_image_name" -d "$_kernelfile" "$work_dir/uImage" || exit 1
 
 	# shellcheck disable=SC3060
 	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
@@ -356,8 +364,9 @@ create_legacy_uboot_images() {
 create_uboot_fit_image() {
 	[ "${deviceinfo_generate_uboot_fit_images}" = "true" ] || return 0
 	log_arrow "u-boot: creating FIT images"
-	fit_source_files=$(ls -A "$work_dir"/*.its)
-	if [ -z "$fit_source_files" ]; then
+	local _fit_source_files
+	_fit_source_files=$(ls -A "$work_dir"/*.its)
+	if [ -z "$_fit_source_files" ]; then
 		log_arrow "u-boot: no FIT image source files found"
 		return 0
 	fi
@@ -365,14 +374,16 @@ create_uboot_fit_image() {
 	require_package "dtc" "dtc" "generate_uboot_fit_image"
 	require_package "dtc" "dtc" "generate_bootimg_uboot_and_fit_image"
 
-	for uboot_fit_source in $fit_source_files; do
-		log_arrow "u-boot: creating FIT image from $uboot_fit_source file"
-		uboot_fit_image=$(echo "$uboot_fit_source" | sed -e 's/\.its/.itb/g')
+	for _uboot_fit_source in $_fit_source_files; do
+		log_arrow "u-boot: creating FIT image from $_uboot_fit_source file"
+		local _uboot_fit_image
+		_uboot_fit_image=$(echo "$_uboot_fit_source" | sed -e 's/\.its/.itb/g')
 		# shellcheck disable=SC3060
-		mkimage -f "$uboot_fit_source" "$uboot_fit_image" || exit 1
+		mkimage -f "$_uboot_fit_source" "$_uboot_fit_image" || exit 1
 
-		uboot_fit_image_filename=$(basename "$uboot_fit_image")
-		additional_files="$additional_files $uboot_fit_image_filename"
+		local _uboot_fit_image_filename
+		_uboot_fit_image_filename=$(basename "$_uboot_fit_image")
+		additional_files="$additional_files $_uboot_fit_image_filename"
 	done
 }
 
@@ -394,6 +405,7 @@ add_gummiboot() {
 	# deviceinfo_arch values are based on those used in Alpine Linux for the
 	# "arch=" variable, see:
 	# https://wiki.alpinelinux.org/wiki/APKBUILD_Reference#arch
+	local _arch=
 	if [ "$deviceinfo_arch" = "x86_64" ]; then
 		_arch="x64"
 	elif [ "$deviceinfo_arch" = "x86" ]; then
@@ -409,7 +421,7 @@ add_gummiboot() {
 		exit 1
 	fi
 
-	_efi_app="/usr/lib/gummiboot/gummiboot${_arch}.efi"
+	local _efi_app="/usr/lib/gummiboot/gummiboot${_arch}.efi"
 
 	if [ ! -e "$_efi_app" ]; then
 		log "ERROR: the required gummiboot EFI app was not found: $_efi_app"
@@ -423,20 +435,22 @@ add_gummiboot() {
 create_bootimg() {
 	[ "${deviceinfo_generate_bootimg}" = "true" ] || return 0
 	# shellcheck disable=SC3060
-	bootimg="$work_dir/boot.img"
+	local _bootimg="$work_dir/boot.img"
 
+	local _mkbootimg
 	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
 		require_package "pxa-mkbootimg" "pxa-mkbootimg" "bootimg_pxa"
-		MKBOOTIMG=pxa-mkbootimg
+		_mkbootimg=pxa-mkbootimg
 	else
 		require_package "mkbootimg-osm0sis" "mkbootimg" "generate_bootimg"
-		MKBOOTIMG=mkbootimg-osm0sis
+		_mkbootimg=mkbootimg-osm0sis
 	fi
 
 	log_arrow "initramfs: creating boot.img"
-	_base="${deviceinfo_flash_offset_base}"
+	local _base="${deviceinfo_flash_offset_base}"
 	[ -z "$_base" ] && _base="0x10000000"
 
+	local _kernelfile
 	if [ -n "$deviceinfo_bootimg_override_payload" ]; then
 		if [ -f "$work_dir/$deviceinfo_bootimg_override_payload" ]; then
 			payload="$work_dir/$deviceinfo_bootimg_override_payload"
@@ -444,13 +458,13 @@ create_bootimg() {
 			if [ "$deviceinfo_bootimg_override_payload_compression" = "gzip" ]; then
 				log_arrow "initramfs: gzip payload replacement"
 				gzip "$payload"
-				kernelfile="$payload.gz"
+				_kernelfile="$payload.gz"
 			else
-				kernelfile="$payload"
+				_kernelfile="$payload"
 			fi
 			if [ -n "$deviceinfo_bootimg_override_payload_append_dtb" ]; then
 				log_arrow "initramfs: append $deviceinfo_bootimg_override_payload_append_dtb at payload end"
-				cat "$work_dir/$deviceinfo_bootimg_override_payload_append_dtb" >> "$kernelfile"
+				cat "$work_dir/$deviceinfo_bootimg_override_payload_append_dtb" >> "$_kernelfile"
 			fi
 		else
 			log "File $work_dir/$deviceinfo_bootimg_override_payload not found,"
@@ -459,18 +473,19 @@ create_bootimg() {
 		fi
 	else
 		# shellcheck disable=SC3060
-		kernelfile="$work_dir/$kernel_filename"
+		_kernelfile="$work_dir/$kernel_filename"
 		if [ "${deviceinfo_append_dtb}" = "true" ]; then
-			kernelfile="${kernelfile}-dtb"
+			_kernelfile="${_kernelfile}-dtb"
 		fi
 
 		if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
+			_kernelfile="${_kernelfile}-mtk"
 			kernelfile="${kernelfile}-mtk"
 		fi
 	fi
 
 
-	_second=""
+	local _second=""
 	if [ "${deviceinfo_bootimg_dtb_second}" = "true" ]; then
 		if [ -z "${deviceinfo_dtb}" ]; then
 			log "ERROR: deviceinfo_bootimg_dtb_second is set, but"
@@ -479,10 +494,11 @@ create_bootimg() {
 			log "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
-		dtb=$(find_dtb "$deviceinfo_dtb")
-		_second="--second $dtb"
+		local _dtb
+		_dtb=$(find_dtb "$deviceinfo_dtb")
+		_second="--second $_dtb"
 	fi
-	_dt=""
+	local _dt=""
 	if [ "${deviceinfo_bootimg_qcdt}" = "true" ]; then
 		_dt="--dt /boot/dt.img"
 		if ! [ -e "/boot/dt.img" ]; then
@@ -508,11 +524,11 @@ create_bootimg() {
 		deviceinfo_bootimg_custom_args="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $dtb"
 	fi
 
-	ramdisk="$work_dir/$initfs_filename"
+	local _ramdisk="$work_dir/$initfs_filename"
 	if [ -n "$deviceinfo_bootimg_override_initramfs" ]; then
 		if [ -f "$work_dir/$deviceinfo_bootimg_override_initramfs" ]; then
 			log_arrow "initramfs: replace initramfs with file $work_dir/$deviceinfo_bootimg_override_initramfs"
-			ramdisk="$work_dir/$deviceinfo_bootimg_override_initramfs"
+			_ramdisk="$work_dir/$deviceinfo_bootimg_override_initramfs"
 		else
 			log "ERROR: file $work_dir/$deviceinfo_bootimg_override_initramfs not found,"
 			log "please, correct deviceinfo_bootimg_override_initramfs option value."
@@ -520,9 +536,9 @@ create_bootimg() {
 		fi
 	fi
 	# shellcheck disable=SC2039 disable=SC2086
-	"${MKBOOTIMG}" \
-		--kernel "${kernelfile}" \
-		--ramdisk "$ramdisk" \
+	"${_mkbootimg}" \
+		--kernel "${_kernelfile}" \
+		--ramdisk "$_ramdisk" \
 		--base "${_base}" \
 		--second_offset "${deviceinfo_flash_offset_second}" \
 		--cmdline "$(get_cmdline)" \
@@ -533,28 +549,28 @@ create_bootimg() {
 		${_second} \
 		${_dt} \
 		${deviceinfo_bootimg_custom_args} \
-		-o "$bootimg" || exit 1
+		-o "$_bootimg" || exit 1
 	# shellcheck disable=SC3060
 	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
 		sh "${deviceinfo_mkinitfs_postprocess}" "$work_dir/$initfs_filename"
 	fi
 	if [ "${deviceinfo_bootimg_blobpack}" = "true" ] || [ "${deviceinfo_bootimg_blobpack}" = "sign" ]; then
 		log_arrow "initramfs: creating blob"
-		_flags=""
+		local _flags=""
 		if [ "${deviceinfo_bootimg_blobpack}" = "sign" ]; then
 			_flags="-s"
 		fi
 		# shellcheck disable=SC3060
-		blobpack $_flags "${bootimg}.blob" \
-				LNX "$bootimg" || exit 1
+		blobpack $_flags "${_bootimg}.blob" \
+				LNX "$_bootimg" || exit 1
 		# shellcheck disable=SC3060
-		copy "${bootimg}.blob" "$bootimg"
+		copy "${_bootimg}.blob" "$_bootimg"
 	fi
 	if [ "${deviceinfo_bootimg_append_seandroidenforce}" = "true" ]; then
 		log_arrow "initramfs: appending 'SEANDROIDENFORCE' to boot.img"
-		printf "SEANDROIDENFORCE" >> "$bootimg"
+		printf "SEANDROIDENFORCE" >> "$_bootimg"
 	fi
-	additional_files="$additional_files $(basename "$bootimg")"
+	additional_files="$additional_files $(basename "$_bootimg")"
 }
 
 flash_updated_boot_parts() {
@@ -658,9 +674,11 @@ EOF
 
 # $@: list of files to get total size of, in kilobytes
 get_size_of_files() {
-	_total=0
+	local _total=0
 	for _f in "$@"; do
+		local _file
 		_file="$(echo "$_f" | cut -d':' -f1)"
+		local _size
 		_size=$(du "$_file" | cut -f1 | sed '$ s/\n$//' | tr '\n' + |sed 's/.$/\n/' | bc -s)
 		_total=$((_total+_size))
 	done
@@ -669,55 +687,57 @@ get_size_of_files() {
 
 # $1: mount point
 parse_fstab_entry() {
-	fstab=$(grep -v ^\# /etc/fstab | grep .)
-	ret=""
+	local _fstab
+	_fstab=$(grep -v ^\# /etc/fstab | grep .)
+	local _ret=""
 
 	# shellcheck disable=SC3003
 	IFS=$'\n'
-	for entry in $fstab; do
-		if [ "$(echo "$entry" | xargs | cut -d" " -f2)" = "$1" ]; then
-			ret="$(echo "$entry" | xargs | cut -d" " -f1)"
+	for _entry in $_fstab; do
+		if [ "$(echo "$_entry" | xargs | cut -d" " -f2)" = "$1" ]; then
+			_ret="$(echo "$_entry" | xargs | cut -d" " -f1)"
 		fi
 	done
 	unset IFS
 
-	echo "$ret"
+	echo "$_ret"
 }
 
 # $1: mount point
 parse_crypttab_entry() {
-	crypttab=$(grep -v ^\# /etc/crypttab | grep .)
-	ret=""
+	local _crypttab
+	_crypttab=$(grep -v ^\# /etc/crypttab | grep .)
+	local _ret=""
 
 	# shellcheck disable=SC3003
 	IFS=$'\n'
-	for entry in $crypttab; do
-		if [ "$(echo "$entry" | xargs | cut -d" " -f1)" = "$1" ]; then
-			ret="$(echo "$entry" | xargs | cut -d" " -f2)"
+	for _entry in $_crypttab; do
+		if [ "$(echo "$_entry" | xargs | cut -d" " -f1)" = "$1" ]; then
+			ret="$(echo "$_entry" | xargs | cut -d" " -f2)"
 		fi
 	done
 	unset IFS
 
-	echo "$ret"
+	echo "$_ret"
 }
 
 get_cmdline() {
-	ret="$deviceinfo_kernel_cmdline"
+	local _ret="$deviceinfo_kernel_cmdline"
 
 	if [ -f "/etc/boot/cmdline.txt" ]; then
-		ret="$ret $(xargs < /etc/boot/cmdline.txt)"
+		_ret="$ret $(xargs < /etc/boot/cmdline.txt)"
 	fi
 
-	boot_uuid=""
-	root_uuid=""
+	local _boot_uuid=""
+	local _root_uuid=""
 
 	if [ -f "/etc/fstab" ]; then
-		boot_uuid=$(parse_fstab_entry "/boot")
-		root_uuid=$(parse_fstab_entry "/")
+		_boot_uuid=$(parse_fstab_entry "/boot")
+		_root_uuid=$(parse_fstab_entry "/")
 	fi
 
 	if [ -f "/etc/crypttab" ]; then
-		root_uuid=$(parse_crypttab_entry "$crypttab_entry")
+		_root_uuid=$(parse_crypttab_entry "$crypttab_entry")
 	fi
 
 	# When appropriate fstab entry does not exist, cmdline will not
@@ -725,15 +745,15 @@ get_cmdline() {
 	# init script will look for partitions according to pmOS_boot
 	# and pmOS_root labels.
 
-	if [ -n "$boot_uuid" ] && [ "$boot_uuid" != "${boot_uuid#UUID=}" ]; then
-		ret="$ret ${distro_prefix}_boot_uuid=${boot_uuid#UUID=}"
+	if [ -n "$_boot_uuid" ] && [ "$_boot_uuid" != "${_boot_uuid#UUID=}" ]; then
+		_ret="$_ret ${distro_prefix}_boot_uuid=${_boot_uuid#UUID=}"
 	fi
 
-	if [ -n "$root_uuid" ] && [ "$root_uuid" != "${root_uuid#UUID=}" ]; then
-		ret="$ret ${distro_prefix}_root_uuid=${root_uuid#UUID=}"
+	if [ -n "$_root_uuid" ] && [ "$_root_uuid" != "${_root_uuid#UUID=}" ]; then
+		_ret="$_ret ${distro_prefix}_root_uuid=${_root_uuid#UUID=}"
 	fi
 
-	echo "$ret"
+	echo "$_ret"
 }
 
 # Check that the the given list of files can be copied to the destination, $output_dir,
@@ -753,38 +773,42 @@ check_destination_free_space() {
 
 	# First check is that target has enough space for all new files/sizes
 	# 1) get size of new files
-	total_new_size=$(get_size_of_files "$@")
+	local _total_new_size
+	_total_new_size=$(get_size_of_files "$@")
 
 	# 2) get size of old files at destination
-	total_old_size=0
-	for f in "$@"; do
-		if [ -f "$output_dir/$(basename "$f")" ]; then
-			total_old_size=$((total_old_size+$(get_size_of_files "$f")))
+	local _total_old_size=0
+	for _f in "$@"; do
+		if [ -f "$output_dir/$(basename "$_f")" ]; then
+			_total_old_size=$((_total_old_size+$(get_size_of_files "$_f")))
 		fi
 	done
 
 	# 3) subtract old size from new size
-	total_diff_size=$((total_new_size-total_old_size))
+	local _total_diff_size
+	_total_diff_size=$((_total_new_size-_total_old_size))
 
 	# 4) get free space at destination
-	target_free_space=$(get_free_space "$output_dir")
+	local _target_free_space
+	_target_free_space=$(get_free_space "$output_dir")
 
 	# does the target have enough free space for diff size of all new files?
-	if [ "$total_diff_size" -ge "$target_free_space" ]; then
+	if [ "$_total_diff_size" -ge "$_target_free_space" ]; then
 		log "Destination filesystem does not have enough free space!"
-		log "Need $total_diff_size kilobytes, have $target_free_space kilobytes"
+		log "Need $_total_diff_size kilobytes, have $_target_free_space kilobytes"
 		exit 1
 	fi
 
 	# Second check is that each file can be replaced atomically
 	# for each new file:
-	for f in "$@"; do
+	for _f in "$@"; do
 		# 1) get size of new file
-		f_size=$(get_size_of_files "$f")
+		local _f_size
+		_f_size=$(get_size_of_files "$_f")
 		# 2) does target have enough free space for the new file size?
-		if [ "$f_size" -ge "$target_free_space" ]; then
-			log "Destination filesystem does not have enough free space to copy this file atomically: $f"
-			log "Need $f_size kilobytes, have $target_free_space kilobytes"
+		if [ "$_f_size" -ge "$_target_free_space" ]; then
+			log "Destination filesystem does not have enough free space to copy this file atomically: $_f"
+			log "Need $_f_size kilobytes, have $_target_free_space kilobytes"
 		fi
 	done
 	echo "... OK!"
@@ -792,9 +816,9 @@ check_destination_free_space() {
 
 # $1: name of dtb to find
 find_dtb() {
-	filename="$1"
+	local _filename="$1"
 
-	if [ -z "$filename" ]; then
+	if [ -z "$_filename" ]; then
 		log "ERROR: dtb name was an empty string"
 		exit 1
 	fi
@@ -804,45 +828,42 @@ find_dtb() {
 	# that provide the same dtb installed, which pmOS does not support, but it is
 	# still potentially unexpected behaviour.
 
-	dtb_found="false"
+	local _dtb_found="false"
+	local _dtb=
 	# Modern postmarketOS dtb path
-	if [ -e "/boot/dtbs/$filename.dtb" ]; then
-		dtb="/boot/dtbs/$filename.dtb"
-		dtb_found="true"
+	if [ -e "/boot/dtbs/$_filename.dtb" ]; then
+		_dtb="/boot/dtbs/$_filename.dtb"
+		_dtb_found="true"
 	fi
 	# Alpine-style dtb paths
-	if [ -e "$(find /boot -path "/boot/dtbs-*/$filename.dtb")" ] && [ "$dtb_found" = "false" ]; then
-		dtb=$(find /boot -path "/boot/dtbs-*/$filename.dtb")
-		dtb_found="true"
+	if [ -e "$(find /boot -path "/boot/dtbs-*/$_filename.dtb")" ] && [ "$_dtb_found" = "false" ]; then
+		_dtb=$(find /boot -path "/boot/dtbs-*/$_filename.dtb")
+		_dtb_found="true"
 	fi
 	# Legacy postmarketOS dtb path (for backwards compatibility)
-	if [ -e "/usr/share/dtb/$filename.dtb" ] && [ "$dtb_found" = "false" ]; then
-		dtb="/usr/share/dtb/$filename.dtb"
-		dtb_found="true"
+	if [ -e "/usr/share/dtb/$_filename.dtb" ] && [ "$_dtb_found" = "false" ]; then
+		_dtb="/usr/share/dtb/$_filename.dtb"
+		_dtb_found="true"
 	fi
-	if [ "$dtb_found" = "false" ]; then
-		log "ERROR: Unable to find $filename.dtb in the following locations:"
+	if [ "$_dtb_found" = "false" ]; then
+		log "ERROR: Unable to find $_filename.dtb in the following locations:"
 		log "    - /boot/dtbs/"
 		log "    - /boot/dtbs-*/"
 		log "    - /usr/share/dtb/"
 		exit 1
 	fi
 
-	echo "$dtb"
+	echo "$_dtb"
 }
 
 # $1: Message to log. Will be prefixed by an arrow.
 log_arrow() {
-	message="$1"
-
-	log "==> $message"
+	log "==> $1"
 }
 
 # $1: Message to log.
 log() {
-	message="$1"
-
 	# Redirect the message to stderr so it doesn't get captured as a "return
 	# value" in functions that use stdout for returning data.
-	echo "$message" 1>&2
+	echo "$1" 1>&2
 }
