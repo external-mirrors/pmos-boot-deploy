@@ -216,13 +216,28 @@ copy() {
 	sync "$_dest_dir"
 }
 
-# Copies files from $files_to_copy to $output_dir
-# $1: space-separated list of files to copy
+# Copies files from the given list of files to $output_dir
+# $@: list of files to copy
+# The file paths support the format <src>:<dest>
+# where <dest> is a path within $output_dir.
+# For example, `grub.cfg:/grub/grub.cfg` will copy `grub.cfg` to
+# `$output_dir/grub/grub.cfg`.
+# If the <dest> is omitted, then <src> will be copied to the root of
+# $output_dir.
 copy_files() {
-	for f in $1; do
-		filename="$(basename "$f")"
-		echo "==> Installing: $output_dir/$filename"
-		copy "$f" "$output_dir/$filename"
+	for f in "$@"; do
+		_src="$(echo "$f" | cut -d':' -f1 -s)"
+		_dest=
+		if [ -z "$_src" ]; then
+			_src="$f"
+			_dest="$output_dir/$(basename "$_src")"
+		else
+			_dest="$output_dir"/"$(echo "$f" | cut -d':' -f2)"
+			mkdir -p "$(dirname "$_dest")"
+		fi
+
+		echo "==> Installing: $_dest"
+		copy "$_src" "$_dest"
 	done
 }
 
@@ -605,8 +620,14 @@ EOF
 
 # $1: list of files to get total size of, in kilobytes
 get_size_of_files() {
+	_files=
+	for f in $1; do
+		# strip off any destination paths
+		_files="$_files $(echo "$f" | cut -d':' -f1)"
+	done
+
 	# shellcheck disable=SC2086
-	ret=$(du $1 | cut -f1 | sed '$ s/\n$//' | tr '\n' + |sed 's/.$/\n/' | bc -s)
+	ret=$(du $_files | cut -f1 | sed '$ s/\n$//' | tr '\n' + |sed 's/.$/\n/' | bc -s)
 	echo "$ret"
 }
 
