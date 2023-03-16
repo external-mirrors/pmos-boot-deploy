@@ -45,5 +45,31 @@ test_copy_files() {
 	return $ret
 }
 
+test_equal() {
+	_func="test_equal"
+	# lhs:rhs
+	_tests="all_lower:all_lower HeYyY:heyyy"
+
+	ret=0
+	for _test in $_tests; do
+		_l="$(echo "$_test" | cut -d':' -f1 -s)"
+		_r="$(echo "$_test" | cut -d':' -f2 -s)"
+
+		# this is fatal, it means I screwed up with writing tests. So don't
+		# waste space to print some nice error
+		[ -z "$_l" ] && exit 1
+
+		if ! equal "$_l" "$_r" ; then
+			echo "$_func: fail - expected strings to be equal: '$_l', '$_r'"
+			ret=1
+		fi
+	done
+
+	[ $ret -eq 0 ] && echo "$_func: pass"
+
+	return $ret
+}
+
 test_get_size_of_files || exit 1
 test_copy_files || exit 1
+test_equal || exit 1

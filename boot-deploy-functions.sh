@@ -241,6 +241,19 @@ copy_files() {
 	done
 }
 
+# Tests the equality of two given strings by doing a case-insensitive
+# comparison.
+# $1: first string
+# $1: second string
+equal() {
+	[ "$1" = "$2" ] && return 0
+
+	_lhs="$( echo "$1" | tr '[:upper:]' '[:lower:]')"
+	_rhs="$( echo "$2" | tr '[:upper:]' '[:lower:]')"
+	[ "$_lhs" = "$_rhs" ]
+	return $?
+}
+
 # Append the correct device tree to the linux image file or copy the dtb to the boot partition
 append_or_copy_dtb() {
 	if [ -z "${deviceinfo_dtb}" ]; then
