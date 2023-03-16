@@ -598,11 +598,9 @@ create_grub_config() {
 		exit 1
 	fi
 
-	mkdir -p /boot/grub
+	log_arrow "Generating grub.cfg"
 
-	log_arrow "Generating /boot/grub/grub.cfg"
-
-	cat <<EOF > /tmp/grub.cfg
+	cat <<EOF > "$work_dir/grub.cfg"
 timeout=0
 
 menuentry "$distro_name" {
@@ -611,8 +609,7 @@ menuentry "$distro_name" {
 	devicetree /$(basename "$deviceinfo_dtb").dtb
 }
 EOF
-	copy "/tmp/grub.cfg" "/boot/grub/grub.cfg"
-	rm /tmp/grub.cfg
+	additional_files="$additional_files grub.cfg:/grub/grub.cfg"
 }
 
 # $1: list of files to get total size of, in kilobytes
