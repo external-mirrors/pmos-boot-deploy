@@ -35,6 +35,7 @@ deviceinfo_generate_extlinux_config=""
 deviceinfo_generate_grub_config=""
 deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
+deviceinfo_generate_gummiboot=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
 deviceinfo_legacy_uboot_load_address=""
@@ -386,6 +387,46 @@ create_uboot_fit_image() {
 		uboot_fit_image_filename=$(basename "$uboot_fit_image")
 		additional_files="$additional_files $uboot_fit_image_filename"
 	done
+}
+
+# Add support for gummiboot by generating necessary config and adding
+# dependencies to $additional_files.
+add_gummiboot() {
+	equal "$deviceinfo_generate_gummiboot" "true" || return 0
+	require_package "gummiboot"
+
+	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
+		title	$distro_name
+		linux	$kernel_filename
+		initrd	$initfs_filename
+		options	$deviceinfo_kernel_cmdline
+	EOF
+	additional_files="$additional_files ${distro_prefix}.conf:/loader/entries/${distro_prefix}.conf"
+
+	# deviceinfo_arch values are based on those used in Alpine Linux for the
+	# "arch=" variable, see:
+	# https://wiki.alpinelinux.org/wiki/APKBUILD_Reference#arch
+	if equal "$deviceinfo_arch" "x86_64"; then
+		_arch="x64"
+	elif equal "$deviceinfo_arch" "x86"; then
+		_arch="ia32"
+	elif equal "$deviceinfo_arch" "aarch64"; then
+		_arch="aa64"
+	elif equal "$deviceinfo_arch" "armv7"; then
+		_arch="arm"
+	elif equal "$deviceinfo_arch" "riscv64"; then
+		_arch="riscv64"
+	else
+		log "ERROR: unsupported architecture: $deviceinfo_arch"
+		exit 1
+	fi
+
+	if [ ! -e "/usr/lib/gummiboot/gummiboot${_arch}.efi" ]; then
+		log "ERROR: the required gummiboot EFI app was not found: /usr/lib/gummiboot/gummiboot${_arch}.efi"
+		exit 1
+	fi
+	copy "/usr/lib/gummiboot/gummiboot${_arch}.efi" "$work_dir/boot${_arch}.efi"
+	additional_files="$additional_files boot${_arch}.efi:/efi/boot/boot${_arch}.efi"
 }
 
 # Android devices
