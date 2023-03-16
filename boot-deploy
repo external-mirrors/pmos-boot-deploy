@@ -37,13 +37,7 @@ done
 
 check_destination_free_space "$files_to_copy"
 
-# copy files to destination
-for f in $files_to_copy; do
-	filename="$(basename "$f")"
-	echo "==> Installing: $output_dir/$filename"
-	copy "$f" "$output_dir/$filename"
-done
-
+copy_files "$files_to_copy"
 sync
 
 # flashing requires things in /boot to exist

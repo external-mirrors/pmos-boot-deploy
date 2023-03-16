@@ -216,6 +216,16 @@ copy() {
 	sync "$_dest_dir"
 }
 
+# Copies files from $files_to_copy to $output_dir
+# $1: space-separated list of files to copy
+copy_files() {
+	for f in $1; do
+		filename="$(basename "$f")"
+		echo "==> Installing: $output_dir/$filename"
+		copy "$f" "$output_dir/$filename"
+	done
+}
+
 # Append the correct device tree to the linux image file or copy the dtb to the boot partition
 append_or_copy_dtb() {
 	if [ -z "${deviceinfo_dtb}" ]; then
