@@ -49,7 +49,7 @@ distro_prefix=""
 # getopts / get_options set the following 'global' variables:
 kernel_filename=
 initfs_filename=
-input_dir=
+work_dir=
 output_dir="/boot"
 additional_files=
 deviceinfo="/etc/deviceinfo"
@@ -76,7 +76,7 @@ get_options() {
 			i)
 				initfs_filename="$OPTARG";;
 			d)
-				input_dir="$OPTARG";;
+				work_dir="$OPTARG";;
 			o)
 				output_dir="$OPTARG";;
 			c)
@@ -97,19 +97,19 @@ get_options() {
 		usage
 		exit 1
 	fi
-	if [ -z "$input_dir" ]; then
+	if [ -z "$work_dir" ]; then
 		usage
 		exit 1
 	fi
 
-	if [ ! -d "$input_dir" ]; then
+	if [ ! -d "$work_dir" ]; then
 		log "Input directory does not exist: $output_dir"
 		exit 1
 	fi
 
 	for f in "$kernel_filename" "$initfs_filename" $additional_files; do
-		if [ ! -f "$input_dir/$f" ]; then
-			log "File does not exist: $input_dir/$f"
+		if [ ! -f "$work_dir/$f" ]; then
+			log "File does not exist: $work_dir/$f"
 			exit 1
 		fi
 	done
@@ -270,16 +270,16 @@ append_or_copy_dtb() {
 		exit 1
 	fi
 
-	_outfile="$input_dir/$kernel_filename-dtb"
+	_outfile="$work_dir/$kernel_filename-dtb"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
 		log_arrow "kernel: appending device-tree ${deviceinfo_dtb}"
 		# shellcheck disable=SC2086
-		cat "$input_dir/$kernel_filename" $dtb > "$_outfile"
+		cat "$work_dir/$kernel_filename" $dtb > "$_outfile"
 		additional_files="$additional_files $(basename "$_outfile")"
 	else
 		for dtb_path in $dtb; do
 			dtb_filename=$(basename "$dtb_path")
-			copy "$dtb_path" "$input_dir/$dtb_filename"
+			copy "$dtb_path" "$work_dir/$dtb_filename"
 			additional_files="$additional_files ${dtb_filename}"
 		done
 	fi
@@ -290,8 +290,8 @@ add_mtk_header() {
 	[ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ] || return 0
 	require_package "mtk-mkimage" "mtk-mkimage" "bootimg_mtk_mkimage"
 
-	_infile="$input_dir/$initfs_filename"
-	_outfile="$input_dir/$initfs_filename.mtk"
+	_infile="$work_dir/$initfs_filename"
+	_outfile="$work_dir/$initfs_filename.mtk"
 	log_arrow "initramfs: adding Mediatek header"
 	mtk-mkimage ROOTFS "$_infile" "$_outfile"
 	copy "$_outfile" "$_infile"
@@ -299,7 +299,7 @@ add_mtk_header() {
 
 	log_arrow "kernel: adding Mediatek header"
 	# shellcheck disable=SC3060
-	kernel="$input_dir/$kernel_filename"
+	kernel="$work_dir/$kernel_filename"
 	rm -f "${kernel}-mtk"
 	mtk-mkimage KERNEL "$kernel" "${kernel}-mtk"
 	additional_files="$additional_files $(basename "${kernel}"-mtk)"
@@ -320,15 +320,15 @@ create_legacy_uboot_images() {
 	require_package "mkimage" "u-boot-tools" "generate_legacy_uboot_initfs"
 
 	log_arrow "initramfs: creating uInitrd"
-	_infile="$input_dir/$initfs_filename"
-	_outfile="$input_dir/uInitrd"
+	_infile="$work_dir/$initfs_filename"
+	_outfile="$work_dir/uInitrd"
 	mkimage -A $arch -T ramdisk -C none -n uInitrd -d "$_infile" \
 		"$_outfile" || exit 1
 
 	log_arrow "kernel: creating uImage"
-	kernelfile="$input_dir/$kernel_filename"
+	kernelfile="$work_dir/$kernel_filename"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
-		kernelfile="$input_dir/$kernel_filename-dtb"
+		kernelfile="$work_dir/$kernel_filename-dtb"
 	fi
 
 	if [ -z "$deviceinfo_legacy_uboot_load_address" ]; then
@@ -342,11 +342,11 @@ create_legacy_uboot_images() {
 	# shellcheck disable=SC3060
 	mkimage -A $arch -O linux -T kernel -C none -a "$deviceinfo_legacy_uboot_load_address" \
 		-e "$deviceinfo_legacy_uboot_load_address" \
-		-n "$deviceinfo_legacy_uboot_image_name" -d "$kernelfile" "$input_dir/uImage" || exit 1
+		-n "$deviceinfo_legacy_uboot_image_name" -d "$kernelfile" "$work_dir/uImage" || exit 1
 
 	# shellcheck disable=SC3060
 	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
-		sh "${deviceinfo_mkinitfs_postprocess}" "$input_dir/$initfs_filename"
+		sh "${deviceinfo_mkinitfs_postprocess}" "$work_dir/$initfs_filename"
 	fi
 
 	additional_files="$additional_files uImage uInitrd"
@@ -355,7 +355,7 @@ create_legacy_uboot_images() {
 create_uboot_fit_image() {
 	log_arrow "u-boot: creating FIT images"
 	[ "${deviceinfo_generate_uboot_fit_images}" = "true" ] || return 0
-	fit_source_files=$(ls -A "$input_dir"/*.its)
+	fit_source_files=$(ls -A "$work_dir"/*.its)
 	if [ -z "$fit_source_files" ]; then
 		log_arrow "u-boot: no FIT image source files found"
 		return 0
@@ -379,7 +379,7 @@ create_uboot_fit_image() {
 create_bootimg() {
 	[ "${deviceinfo_generate_bootimg}" = "true" ] || return 0
 	# shellcheck disable=SC3060
-	bootimg="$input_dir/boot.img"
+	bootimg="$work_dir/boot.img"
 
 	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
 		require_package "pxa-mkbootimg" "pxa-mkbootimg" "bootimg_pxa"
@@ -394,8 +394,8 @@ create_bootimg() {
 	[ -z "$_base" ] && _base="0x10000000"
 
 	if [ -n "$deviceinfo_bootimg_override_payload" ]; then
-		if [ -f "$input_dir/$deviceinfo_bootimg_override_payload" ]; then
-			payload="$input_dir/$deviceinfo_bootimg_override_payload"
+		if [ -f "$work_dir/$deviceinfo_bootimg_override_payload" ]; then
+			payload="$work_dir/$deviceinfo_bootimg_override_payload"
 			log_arrow "initramfs: replace kernel with file $payload"
 			if [ "$deviceinfo_bootimg_override_payload_compression" = "gzip" ]; then
 				log_arrow "initramfs: gzip payload replacement"
@@ -406,16 +406,16 @@ create_bootimg() {
 			fi
 			if [ -n "$deviceinfo_bootimg_override_payload_append_dtb" ]; then
 				log_arrow "initramfs: append $deviceinfo_bootimg_override_payload_append_dtb at payload end"
-				cat "$input_dir/$deviceinfo_bootimg_override_payload_append_dtb" >> "$kernelfile"
+				cat "$work_dir/$deviceinfo_bootimg_override_payload_append_dtb" >> "$kernelfile"
 			fi
 		else
-			log "File $input_dir/$deviceinfo_bootimg_override_payload not found,"
+			log "File $work_dir/$deviceinfo_bootimg_override_payload not found,"
 			log "please, correct deviceinfo_bootimg_override_payload option value."
 			exit 1
 		fi
 	else
 		# shellcheck disable=SC3060
-		kernelfile="$input_dir/$kernel_filename"
+		kernelfile="$work_dir/$kernel_filename"
 		if [ "${deviceinfo_append_dtb}" = "true" ]; then
 			kernelfile="${kernelfile}-dtb"
 		fi
@@ -464,13 +464,13 @@ create_bootimg() {
 		deviceinfo_bootimg_custom_args="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $dtb"
 	fi
 
-	ramdisk="$input_dir/$initfs_filename"
+	ramdisk="$work_dir/$initfs_filename"
 	if [ -n "$deviceinfo_bootimg_override_initramfs" ]; then
-		if [ -f "$input_dir/$deviceinfo_bootimg_override_initramfs" ]; then
-			log_arrow "initramfs: replace initramfs with file $input_dir/$deviceinfo_bootimg_override_initramfs"
-			ramdisk="$input_dir/$deviceinfo_bootimg_override_initramfs"
+		if [ -f "$work_dir/$deviceinfo_bootimg_override_initramfs" ]; then
+			log_arrow "initramfs: replace initramfs with file $work_dir/$deviceinfo_bootimg_override_initramfs"
+			ramdisk="$work_dir/$deviceinfo_bootimg_override_initramfs"
 		else
-			log "ERROR: file $input_dir/$deviceinfo_bootimg_override_initramfs not found,"
+			log "ERROR: file $work_dir/$deviceinfo_bootimg_override_initramfs not found,"
 			log "please, correct deviceinfo_bootimg_override_initramfs option value."
 			exit 1
 		fi
@@ -492,7 +492,7 @@ create_bootimg() {
 		-o "$bootimg" || exit 1
 	# shellcheck disable=SC3060
 	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
-		sh "${deviceinfo_mkinitfs_postprocess}" "$input_dir/$initfs_filename"
+		sh "${deviceinfo_mkinitfs_postprocess}" "$work_dir/$initfs_filename"
 	fi
 	if [ "${deviceinfo_bootimg_blobpack}" = "true" ] || [ "${deviceinfo_bootimg_blobpack}" = "sign" ]; then
 		log_arrow "initramfs: creating blob"
@@ -542,11 +542,11 @@ create_depthcharge_kernel_image() {
 
 	depthchargectl build --root none \
 		--board "$deviceinfo_depthcharge_board" \
-		--kernel "$input_dir/$kernel_filename" \
+		--kernel "$work_dir/$kernel_filename" \
 		--kernel-cmdline "$(get_cmdline)" \
-		--initramfs "$input_dir/$initfs_filename" \
-		--fdtdir "$input_dir" \
-		--output "$input_dir/$(basename "$deviceinfo_cgpt_kpart")"
+		--initramfs "$work_dir/$initfs_filename" \
+		--fdtdir "$work_dir" \
+		--output "$work_dir/$(basename "$deviceinfo_cgpt_kpart")"
 
 	additional_files="$additional_files $(basename "$deviceinfo_cgpt_kpart")"
 }
@@ -576,7 +576,7 @@ create_extlinux_config() {
 
 	log_arrow "Generating extlinux.conf"
 
-	cat <<EOF > "$input_dir/extlinux.conf"
+	cat <<EOF > "$work_dir/extlinux.conf"
 timeout 1
 default $distro_name
 menu title boot prev kernel
