@@ -4,7 +4,7 @@
 set -eu
 
 initfs_filename=""
-input_dir=""
+work_dir=""
 output_dir=""
 additional_files=""
 
@@ -30,9 +30,9 @@ create_grub_config
 
 mkdir -p "$output_dir"
 
-files_to_copy="$input_dir/$initfs_filename"
+files_to_copy="$work_dir/$initfs_filename"
 for f in $additional_files; do
-	files_to_copy="$files_to_copy $input_dir/$f"
+	files_to_copy="$files_to_copy $work_dir/$f"
 done
 
 check_destination_free_space "$files_to_copy"
