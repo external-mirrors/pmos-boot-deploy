@@ -37,7 +37,8 @@ done
 
 check_destination_free_space "$files_to_copy"
 
-copy_files "$files_to_copy"
+# shellcheck disable=SC2086
+copy_files $files_to_copy
 sync
 
 # flashing requires things in /boot to exist
