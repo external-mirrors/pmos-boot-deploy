@@ -353,8 +353,8 @@ create_legacy_uboot_images() {
 }
 
 create_uboot_fit_image() {
-	log_arrow "u-boot: creating FIT images"
 	[ "${deviceinfo_generate_uboot_fit_images}" = "true" ] || return 0
+	log_arrow "u-boot: creating FIT images"
 	fit_source_files=$(ls -A "$work_dir"/*.its)
 	if [ -z "$fit_source_files" ]; then
 		log_arrow "u-boot: no FIT image source files found"
