@@ -666,15 +666,21 @@ EOF
 	additional_files="$additional_files grub.cfg:/grub/grub.cfg"
 }
 
-# $1: list of files to get total size of, in kilobytes
+# $@: list of files to get total size of, in kilobytes
 get_size_of_files() {
-	_files=
-	for f in $1; do
+	set -x
+	_files=""
+	if [ $# -gt 1 ]; then
+		for f in "$@"; do
+			# strip off any destination paths
+			_files="$_files $(echo "$f" | cut -d':' -f1)"
+		done
+	else
 		# strip off any destination paths
-		_files="$_files $(echo "$f" | cut -d':' -f1)"
-	done
+		_files="$(echo "$f" | cut -d':' -f1)"
+	fi
 
-	# shellcheck disable=SC2086
+	echo "$_files"
 	ret=$(du $_files | cut -f1 | sed '$ s/\n$//' | tr '\n' + |sed 's/.$/\n/' | bc -s)
 	echo "$ret"
 }
@@ -750,7 +756,7 @@ get_cmdline() {
 
 # Check that the the given list of files can be copied to the destination, $output_dir,
 # atomically
-# $1: list of files to check
+# $@: list of files to check
 check_destination_free_space() {
 	# This uses two checks to test whether the destination filesystem has
 	# enough free space for copying the given list of files atomically. Since
@@ -762,15 +768,15 @@ check_destination_free_space() {
 	# it before the old file is atomically replaced.
 
 	log_arrow "Checking free space at $output_dir"
-	files="$1"
+	files="$@"
 
 	# First check is that target has enough space for all new files/sizes
 	# 1) get size of new files
-	total_new_size=$(get_size_of_files "$files")
+	total_new_size=$(get_size_of_files "$_files")
 
 	# 2) get size of old files at destination
 	total_old_size=0
-	for f in $files; do
+	for f in "$_files"; do
 		if [ -f "$output_dir/$(basename "$f")" ]; then
 			total_old_size=$((total_old_size+$(get_size_of_files "$f")))
 		fi
@@ -791,7 +797,7 @@ check_destination_free_space() {
 
 	# Second check is that each file can be replaced atomically
 	# for each new file:
-	for f in $files; do
+	for f in "$@"; do
 		# 1) get size of new file
 		f_size=$(get_size_of_files "$f")
 		# 2) does target have enough free space for the new file size?
