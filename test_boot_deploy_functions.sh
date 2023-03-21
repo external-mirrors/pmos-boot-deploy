@@ -10,7 +10,8 @@ test_get_size_of_files() {
 	for f in f1 f2 f3 f4 f5; do
 		dd if=/dev/zero of="$wdir/$f" bs=1K count=37 >/dev/null 2>&1
 	done
-	size=$(get_size_of_files "$wdir/f1 $wdir/f2 $wdir/f3 $wdir/f4 $wdir/f5:/foo/f5")
+	# shellcheck disable=SC2086
+	size=$(get_size_of_files $wdir/f1 $wdir/f2 $wdir/f3 $wdir/f4 $wdir/f5:/foo/f5)
 
 	ret=0
 	# exact size depends on the filesystem, so just make sure it's roughly in the same ballpark

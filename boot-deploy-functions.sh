@@ -612,17 +612,15 @@ EOF
 	additional_files="$additional_files grub.cfg:/grub/grub.cfg"
 }
 
-# $1: list of files to get total size of, in kilobytes
+# $@: list of files to get total size of, in kilobytes
 get_size_of_files() {
-	_files=
-	for f in $1; do
-		# strip off any destination paths
-		_files="$_files $(echo "$f" | cut -d':' -f1)"
+	_total=0
+	for _f in "$@"; do
+		_file="$(echo "$_f" | cut -d':' -f1)"
+		_size=$(du "$_file" | cut -f1 | sed '$ s/\n$//' | tr '\n' + |sed 's/.$/\n/' | bc -s)
+		_total=$((_total+_size))
 	done
-
-	# shellcheck disable=SC2086
-	ret=$(du $_files | cut -f1 | sed '$ s/\n$//' | tr '\n' + |sed 's/.$/\n/' | bc -s)
-	echo "$ret"
+	echo "$_total"
 }
 
 # $1: mount point
