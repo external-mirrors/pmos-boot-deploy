@@ -31,8 +31,10 @@ test_copy_files() {
 	mkdir -p "$output_dir"
 	touch "$_in/foo"
 	touch "$_in/bar"
+	touch "$_in/has space"
 
-	copy_files "$_in/foo:/usr/bin/foo $_in/bar"
+	# shellcheck disable=SC2086
+	copy_files $_in/foo:/usr/bin/foo $_in/bar "$_in/has space"
 
 	ret=0
 	if [ ! -e "$output_dir/usr/bin/foo" ]; then
@@ -41,7 +43,11 @@ test_copy_files() {
 	elif [ ! -e "$output_dir/bar" ]; then
 		echo "test_copy_files: fail - expected to copy a file!"
 		ret=1
+	elif [ ! -e "$output_dir/has space" ]; then
+		echo "test_copy_files: fail - expected to copy a file with a space in the path!"
+		ret=1
 	fi
+
 	[ $ret -eq 0 ] && echo "test_copy_files: pass"
 	return $ret
 }
