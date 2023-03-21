@@ -35,7 +35,8 @@ for f in $additional_files; do
 	files_to_copy="$files_to_copy $work_dir/$f"
 done
 
-check_destination_free_space "$files_to_copy"
+# shellcheck disable=SC2086
+check_destination_free_space $files_to_copy
 
 # shellcheck disable=SC2086
 copy_files $files_to_copy

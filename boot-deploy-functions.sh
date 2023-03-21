@@ -694,7 +694,7 @@ get_cmdline() {
 
 # Check that the the given list of files can be copied to the destination, $output_dir,
 # atomically
-# $1: list of files to check
+# $@: list of files to check
 check_destination_free_space() {
 	# This uses two checks to test whether the destination filesystem has
 	# enough free space for copying the given list of files atomically. Since
@@ -706,15 +706,14 @@ check_destination_free_space() {
 	# it before the old file is atomically replaced.
 
 	log_arrow "Checking free space at $output_dir"
-	files="$1"
 
 	# First check is that target has enough space for all new files/sizes
 	# 1) get size of new files
-	total_new_size=$(get_size_of_files "$files")
+	total_new_size=$(get_size_of_files "$@")
 
 	# 2) get size of old files at destination
 	total_old_size=0
-	for f in $files; do
+	for f in "$@"; do
 		if [ -f "$output_dir/$(basename "$f")" ]; then
 			total_old_size=$((total_old_size+$(get_size_of_files "$f")))
 		fi
@@ -735,7 +734,7 @@ check_destination_free_space() {
 
 	# Second check is that each file can be replaced atomically
 	# for each new file:
-	for f in $files; do
+	for f in "$@"; do
 		# 1) get size of new file
 		f_size=$(get_size_of_files "$f")
 		# 2) does target have enough free space for the new file size?
