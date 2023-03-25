@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -e
-DIR="$(cd "$(dirname "$0")" && pwd -P)"
-cd "$DIR/.."
+if [ "$(id -u)" = 0 ]; then
+	set -x
+	apk -q add shellcheck
+	exec su "${TESTUSER:-build}" -c "sh -e $0"
+fi
 
-# Shell: shellcheck
 sh_files="
 	./boot-deploy
 	./boot-deploy-functions.sh
@@ -14,7 +16,6 @@ sh_files="
 "
 
 for file in $sh_files; do
-	echo "Test with shellcheck: $file"
-	cd "$DIR/../$(dirname "$file")"
-	shellcheck -e SC1008 -e SC3043 -x "$(basename "$file")"
+	echo "shellcheck: $file"
+	shellcheck -e SC1008 -e SC3043 -x "$file"
 done
