@@ -124,7 +124,7 @@ get_free_space() {
 
 	# note: tr is used to reduce extra spaces in df output to a single space,
 	# so cut fields are consistent
-	_df_out="$(df -P "$1" | tr -s ' ' | tail -1 | cut -d' ' -f4)"
+	_df_out="$(df -P "$1" | tail -1 | awk '{ print $4; }')"
 	_df_out="$(echo "$_df_out"/0.9 | bc -s)"
 	echo "$_df_out"
 }
