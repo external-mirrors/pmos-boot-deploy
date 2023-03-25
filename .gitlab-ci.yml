@@ -17,24 +17,11 @@ image: alpine:latest
     - merge_requests
     - tags
 
-shellcheck:
-  allow_failure: true
-  <<: *only-default
-  before_script:
-    - apk -q add shellcheck
-  script:
-    - .ci/shellcheck.sh
-
-editor-config:
+tests:
   <<: *only-default
   before_script:
     - adduser -D build
   script:
-    - .ci/ec.sh
-
-tests:
-  <<: *only-default
-  script:
-    - ./test_boot_deploy_functions.sh
+    - .ci/run.sh
   artifacts:
     expire_in: 1 week
