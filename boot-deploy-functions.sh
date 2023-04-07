@@ -131,6 +131,51 @@ get_free_space() {
 	echo "$_df_out"
 }
 
+# Validate deviceinfo variables, exiting the program if any of them fail
+# validation
+validate_deviceinfo() {
+	local _fail=false
+
+	# These variables have values that are used by the script to do string
+	# comparison, and should be lower case since sh doesn't support
+	# case-insensitive comparisons.
+	for _e in \
+		deviceinfo_append_dtb \
+		deviceinfo_arch \
+		deviceinfo_bootimg_append_seandroidenforce \
+		deviceinfo_bootimg_blobpack \
+		deviceinfo_bootimg_dtb_second \
+		deviceinfo_bootimg_mtk_mkimage \
+		deviceinfo_bootimg_override_payload_compression \
+		deviceinfo_bootimg_pxa \
+		deviceinfo_bootimg_qcdt \
+		deviceinfo_flash_kernel_on_update \
+		deviceinfo_generate_bootimg \
+		deviceinfo_generate_depthcharge_image \
+		deviceinfo_generate_extlinux_config \
+		deviceinfo_generate_grub_config \
+		deviceinfo_generate_gummiboot \
+		deviceinfo_generate_legacy_uboot_initfs \
+		deviceinfo_generate_uboot_fit_images \
+		deviceinfo_header_version \
+		deviceinfo_mkinitfs_postprocess \
+		; do
+			# Expand the variable
+			local _val
+			_val="$(eval ". $deviceinfo && echo \${$_e}")"
+			# Check that the value is lowercase
+			if [ "$_val" != "$( echo "$_val" | tr '[:upper:]' '[:lower:]')" ]; then
+				echo "ERROR: variable should have a lowercase value: $_e"
+				_fail=true
+			fi
+		done
+
+	if "$_fail"; then
+		echo "For more information, see: https://wiki.postmarketos.org/wiki/Deviceinfo_reference#Case_sensitivity"
+		exit 1
+	fi
+}
+
 source_deviceinfo() {
 	if [ ! -e "$deviceinfo" ]; then
 		log "ERROR: $deviceinfo not found!"
@@ -138,6 +183,8 @@ source_deviceinfo() {
 	fi
 	# shellcheck disable=SC1090
 	. "$deviceinfo"
+
+	validate_deviceinfo
 }
 
 source_boot_deploy_config() {
