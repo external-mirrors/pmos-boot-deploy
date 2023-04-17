@@ -437,6 +437,25 @@ create_uboot_fit_image() {
 	done
 }
 
+# Return the corresponding EFI arch string based on the value of
+# deviceinfo_arch.
+get_efi_arch() {
+	if [ "$deviceinfo_arch" = "x86_64" ]; then
+		echo "x64"
+	elif [ "$deviceinfo_arch" = "x86" ]; then
+		echo "ia32"
+	elif [ "$deviceinfo_arch" = "aarch64" ]; then
+		echo "aa64"
+	elif [ "$deviceinfo_arch" = "armv7" ]; then
+		echo "arm"
+	elif [ "$deviceinfo_arch" = "riscv64" ]; then
+		echo "riscv64"
+	else
+		log "ERROR: unsupported architecture: $deviceinfo_arch"
+		exit 1
+	fi
+}
+
 # Add support for gummiboot by generating necessary config and adding
 # dependencies to $additional_files.
 add_gummiboot() {
