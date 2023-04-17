@@ -36,6 +36,7 @@ deviceinfo_generate_grub_config=""
 deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_generate_gummiboot=""
+deviceinfo_efi_arch=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
 deviceinfo_kernel_cmdline_append=""
@@ -167,6 +168,7 @@ validate_deviceinfo() {
 		deviceinfo_generate_gummiboot \
 		deviceinfo_generate_legacy_uboot_initfs \
 		deviceinfo_generate_uboot_fit_images \
+		deviceinfo_efi_arch \
 		deviceinfo_header_version \
 		deviceinfo_mkinitfs_postprocess \
 		; do
@@ -448,6 +450,34 @@ create_uboot_fit_image() {
 		_uboot_fit_image_filename=$(basename "$_uboot_fit_image")
 		additional_files="$additional_files $_uboot_fit_image_filename"
 	done
+}
+
+# Returns an EFI-compatible arch string based on deviceinfo_efi_arch, or
+# deviceinfo_arch if the former is not set.
+get_efi_arch() {
+	local _arch="$deviceinfo_efi_arch"
+	[ -z "$_arch" ] && _arch="$deviceinfo_arch"
+
+	case "$_arch" in
+		"x86_64")
+			echo "x64"
+			;;
+		"x86")
+			echo "ia32"
+			;;
+		"aarch64")
+			echo "aa64"
+			;;
+		"armv7")
+			echo "arm"
+			;;
+		"riscv64")
+			echo "riscv64"
+			;;
+		*)
+			log "ERROR: unsupported architecture: $_arch"
+			;;
+	esac
 }
 
 # Add support for gummiboot by generating necessary config and adding
