@@ -474,21 +474,8 @@ add_gummiboot() {
 	# deviceinfo_arch values are based on those used in Alpine Linux for the
 	# "arch=" variable, see:
 	# https://wiki.alpinelinux.org/wiki/APKBUILD_Reference#arch
-	local _arch=
-	if [ "$deviceinfo_arch" = "x86_64" ]; then
-		_arch="x64"
-	elif [ "$deviceinfo_arch" = "x86" ]; then
-		_arch="ia32"
-	elif [ "$deviceinfo_arch" = "aarch64" ]; then
-		_arch="aa64"
-	elif [ "$deviceinfo_arch" = "armv7" ]; then
-		_arch="arm"
-	elif [ "$deviceinfo_arch" = "riscv64" ]; then
-		_arch="riscv64"
-	else
-		log "ERROR: unsupported architecture: $deviceinfo_arch"
-		exit 1
-	fi
+	local _arch
+	_arch="$(get_efi_arch)"
 
 	local _efi_app="/usr/lib/gummiboot/gummiboot${_arch}.efi"
 
