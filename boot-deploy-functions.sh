@@ -495,33 +495,17 @@ add_gummiboot() {
 	EOF
 	additional_files="$additional_files ${distro_prefix}.conf:/loader/entries/${distro_prefix}.conf"
 
-	# deviceinfo_arch values are based on those used in Alpine Linux for the
-	# "arch=" variable, see:
-	# https://wiki.alpinelinux.org/wiki/APKBUILD_Reference#arch
-	local _arch=
-	if [ "$deviceinfo_arch" = "x86_64" ]; then
-		_arch="x64"
-	elif [ "$deviceinfo_arch" = "x86" ]; then
-		_arch="ia32"
-	elif [ "$deviceinfo_arch" = "aarch64" ]; then
-		_arch="aa64"
-	elif [ "$deviceinfo_arch" = "armv7" ]; then
-		_arch="arm"
-	elif [ "$deviceinfo_arch" = "riscv64" ]; then
-		_arch="riscv64"
-	else
-		log "ERROR: unsupported architecture: $deviceinfo_arch"
-		exit 1
-	fi
+	local _efi_arch
+	_arch="$(get_efi_arch)"
 
-	local _efi_app="/usr/lib/gummiboot/gummiboot${_arch}.efi"
+	local _efi_app="/usr/lib/gummiboot/gummiboot${_efi_arch}.efi"
 
 	if [ ! -e "$_efi_app" ]; then
 		log "ERROR: the required gummiboot EFI app was not found: $_efi_app"
 		exit 1
 	fi
-	copy "$_efi_app" "$work_dir/boot${_arch}.efi"
-	additional_files="$additional_files boot${_arch}.efi:/efi/boot/boot${_arch}.efi"
+	copy "$_efi_app" "$work_dir/boot${_efi_arch}.efi"
+	additional_files="$additional_files boot${_efi_arch}.efi:efi/boot/boot${_efi_arch}.efi"
 }
 
 # Android devices
