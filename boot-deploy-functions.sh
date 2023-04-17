@@ -35,7 +35,7 @@ deviceinfo_generate_extlinux_config=""
 deviceinfo_generate_grub_config=""
 deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
-deviceinfo_generate_gummiboot=""
+deviceinfo_generate_systemd_boot=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
 deviceinfo_kernel_cmdline_append=""
@@ -164,7 +164,7 @@ validate_deviceinfo() {
 		deviceinfo_generate_depthcharge_image \
 		deviceinfo_generate_extlinux_config \
 		deviceinfo_generate_grub_config \
-		deviceinfo_generate_gummiboot \
+		deviceinfo_generate_systemd_boot \
 		deviceinfo_generate_legacy_uboot_initfs \
 		deviceinfo_generate_uboot_fit_images \
 		deviceinfo_header_version \
@@ -450,48 +450,65 @@ create_uboot_fit_image() {
 	done
 }
 
-# Add support for gummiboot by generating necessary config and adding
-# dependencies to $additional_files.
-add_gummiboot() {
-	[ "$deviceinfo_generate_gummiboot" = "true" ] || return 0
-	require_package "gummiboot" "gummiboot" "generate_gummiboot"
-	log_arrow "gummiboot: adding support"
+# Generate a Bootloader Spec entry for the current kernel / initramfs
+# See: https://uapi-group.org/specifications/specs/boot_loader_specification/
+generate_bootloader_spec_conf() {
+	local _dtb=""
+	if [ -n "${deviceinfo_dtb}" ]; then
+		_dtb="$(find_dtb "$deviceinfo_dtb")"
+	fi
+	local _dtb_line=""
+	if [ -n "$_dtb" ]; then
+		_dtb_line="devicetree $(basename "$deviceinfo_dtb").dtb"
+	fi
 
+	# TODO: need to guarantee that distro_prefix is always going to be
+	# compliant with the BLS!
 	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
 		title	$distro_name
 		linux	$kernel_filename
 		initrd	$initfs_filename
 		options $(get_cmdline)
+		$_dtb_line
 	EOF
-	additional_files="$additional_files ${distro_prefix}.conf:/loader/entries/${distro_prefix}.conf"
 
-	# deviceinfo_arch values are based on those used in Alpine Linux for the
-	# "arch=" variable, see:
-	# https://wiki.alpinelinux.org/wiki/APKBUILD_Reference#arch
-	local _arch=
-	if [ "$deviceinfo_arch" = "x86_64" ]; then
-		_arch="x64"
-	elif [ "$deviceinfo_arch" = "x86" ]; then
-		_arch="ia32"
-	elif [ "$deviceinfo_arch" = "aarch64" ]; then
-		_arch="aa64"
-	elif [ "$deviceinfo_arch" = "armv7" ]; then
-		_arch="arm"
-	elif [ "$deviceinfo_arch" = "riscv64" ]; then
-		_arch="riscv64"
-	else
-		log "ERROR: unsupported architecture: $deviceinfo_arch"
+	additional_files="$additional_files ${distro_prefix}.conf:loader/entries/${distro_prefix}.conf"
+}
+
+# Add support for systemd-boot (and/or gummiboot) by generating necessary
+# config and adding dependencies to $additional_files.
+add_systemd_boot() {
+	[ "$deviceinfo_generate_systemd_boot" = "true" ] || return 0
+	log_arrow "systemd-boot: adding support"
+
+	generate_bootloader_spec_conf
+
+	local _found="false"
+	# Note: the order of these directories is important! The intention is to
+	# prefer systemd-boot over gummiboot, in case both happen to be installed.
+	for _basedir in /usr/lib/systemd/boot/efi /usr/lib/gummiboot; do
+		[ ! -d "$_basedir" ] && continue
+		# only copy app(s) from the first base directory found, to prevent the
+		# second set of apps found from overwriting the first
+		[ "$_found" = "true" ] && break
+		# Copy multiple efi apps if they exist, to allow supporting multiple
+		# archs (e.g. 32-bit EFI on x86_64)
+		for _efi_app in "$_basedir"/*.efi; do
+			log_arrow "systemd-boot: found '$_efi_app'"
+			# remove gummi* and systemd-* prefixes
+			local _fname
+			_fname="$(basename "$_efi_app")"
+			_fname="${_fname##gummi}"
+			_fname="${_fname##systemd-}"
+			_found="true"
+			copy "$_efi_app" "$work_dir/$_fname"
+			additional_files="$additional_files $_fname:efi/boot/$_fname"
+		done
+	done
+	if [ "$_found" = "false" ]; then
+		log "ERROR: no EFI bootloader app found for systemd or gummiboot"
 		exit 1
 	fi
-
-	local _efi_app="/usr/lib/gummiboot/gummiboot${_arch}.efi"
-
-	if [ ! -e "$_efi_app" ]; then
-		log "ERROR: the required gummiboot EFI app was not found: $_efi_app"
-		exit 1
-	fi
-	copy "$_efi_app" "$work_dir/boot${_arch}.efi"
-	additional_files="$additional_files boot${_arch}.efi:/efi/boot/boot${_arch}.efi"
 }
 
 # Android devices
