@@ -38,6 +38,7 @@ deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_generate_gummiboot=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
+deviceinfo_kernel_cmdline_append=""
 deviceinfo_legacy_uboot_load_address=""
 deviceinfo_legacy_uboot_image_name=""
 deviceinfo_flash_kernel_on_update=""
@@ -53,7 +54,7 @@ initfs_filename=
 work_dir=
 output_dir="/boot"
 additional_files=
-deviceinfo="/etc/deviceinfo"
+local_deviceinfo=""
 
 usage() {
 	printf "Usage:
@@ -63,7 +64,7 @@ Where:
 	-k  filename of the kernel in the input directory
 	-d  path to directory containing input initfs, kernel
 	-o  path to output directory {default: /boot}
-	-c  path to deviceinfo {default: /etc/deviceinfo}
+	-c  path to local deviceinfo {default: source /etc/deviceinfo after /usr/share/deviceinfo/deviceinfo}
 
 	Additional files listed are copied from the input directory into the output directory as-is\n" "$0"
 }
@@ -81,7 +82,7 @@ get_options() {
 			o)
 				output_dir="$OPTARG";;
 			c)
-				deviceinfo="$OPTARG";;
+				local_deviceinfo="$OPTARG";;
 			?)
 				usage
 				exit 0
@@ -165,7 +166,7 @@ validate_deviceinfo() {
 		; do
 			# Expand the variable
 			local _val
-			_val="$(eval ". $deviceinfo && echo \${$_e}")"
+			_val="$(eval "echo \${$_e}")"
 			# Check that the value is lowercase
 			if [ "$_val" != "$( echo "$_val" | tr '[:upper:]' '[:lower:]')" ]; then
 				echo "ERROR: variable should have a lowercase value: $_e"
@@ -180,12 +181,20 @@ validate_deviceinfo() {
 }
 
 source_deviceinfo() {
-	if [ ! -e "$deviceinfo" ]; then
-		log "ERROR: $deviceinfo not found!"
-		exit 1
+	if [ -n "$local_deviceinfo" ]; then
+		if [ ! -e "$local_deviceinfo" ]; then
+			log "ERROR: $local_deviceinfo file not found!"
+			exit 1
+		fi
+
+		# shellcheck disable=SC1090
+		. "$local_deviceinfo"
+	else
+		# shellcheck disable=SC1091
+		[ -f /usr/share/deviceinfo/deviceinfo ] && . /usr/share/deviceinfo/deviceinfo
+		# shellcheck disable=SC1091
+		[ -f /etc/deviceinfo ] && . /etc/deviceinfo
 	fi
-	# shellcheck disable=SC1090
-	. "$deviceinfo"
 
 	validate_deviceinfo
 }
@@ -771,11 +780,7 @@ parse_crypttab_entry() {
 }
 
 get_cmdline() {
-	local _ret="$deviceinfo_kernel_cmdline"
-
-	if [ -f "/etc/boot/cmdline.txt" ]; then
-		_ret="$ret $(xargs < /etc/boot/cmdline.txt)"
-	fi
+	local _ret="$deviceinfo_kernel_cmdline $deviceinfo_kernel_cmdline_append"
 
 	local _boot_uuid=""
 	local _root_uuid=""

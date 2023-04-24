@@ -41,7 +41,7 @@ Where:
 	-k  filename of the kernel in the input directory
 	-d  path to directory containing input initfs, kernel
 	-o  path to output directory {default: /boot}
-	-c  path to deviceinfo {default: /etc/deviceinfo}
+	-c  path to deviceinfo {default: both /usr/share/deviceinfo/deviceinfo and /etc/deviceinfo are sourced, in that order }
 
 		Additional files listed are copied from the input directory into the output directory as-is
 ```
