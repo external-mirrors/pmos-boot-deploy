@@ -127,7 +127,7 @@ get_free_space() {
 	# so cut fields are consistent
 	local _df_out
 	_df_out="$(df -P "$1" | tail -1 | awk '{ print $4; }')"
-	_df_out="$(echo "$_df_out"/0.9 | bc -s)"
+	_df_out="$(echo "$_df_out*0.9" | bc -s)"
 	echo "$_df_out"
 }
 
