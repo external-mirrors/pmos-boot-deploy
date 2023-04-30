@@ -117,18 +117,21 @@ get_options() {
 }
 
 # Return the free space (bytes) for the mount point that contains the given
-# path. This only returns 90% of the actual free space, to avoid possibly
-# filling the filesystem
+# path. This only returns up to 90% of the actual free space, to avoid possibly
+# filling the filesystem.
+# Note: In order to avoid returning a float, which makes comparisons and other
+# operations more complicated, this function rounds down to the nearest byte.
+#
 # $1: Path
 get_free_space() {
 	[ -z "$1" ] && log "No path given to free space check" && exit 1
 
-	# note: tr is used to reduce extra spaces in df output to a single space,
-	# so cut fields are consistent
 	local _df_out
 	_df_out="$(df -P "$1" | tail -1 | awk '{ print $4; }')"
 	_df_out="$(echo "$_df_out*0.9" | bc -s)"
-	echo "$_df_out"
+	# Effectively convert the value to an integer, rounding down to the nearest
+	# byte.
+	printf "%.0f" "$_df_out"
 }
 
 # Validate deviceinfo variables, exiting the program if any of them fail
