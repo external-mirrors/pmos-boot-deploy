@@ -716,13 +716,15 @@ create_grub_config() {
 
 	log_arrow "Generating grub.cfg"
 
+	local _devicetree=
+	[ -n "$deviceinfo_dtb" ] && _devicetree="devicetree /$(basename "$deviceinfo_dtb").dtb"
 	cat <<EOF > "$work_dir/grub.cfg"
 timeout=0
 
 menuentry "$distro_name" {
 	linux /$kernel_filename $(get_cmdline)
 	initrd /$initfs_filename
-	devicetree /$(basename "$deviceinfo_dtb").dtb
+	$_devicetree
 }
 EOF
 	additional_files="$additional_files grub.cfg:/grub/grub.cfg"
