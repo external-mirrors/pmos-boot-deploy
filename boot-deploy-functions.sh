@@ -18,10 +18,13 @@ deviceinfo_bootimg_override_payload=""
 deviceinfo_bootimg_override_payload_compression=""
 deviceinfo_bootimg_override_payload_append_dtb=""
 deviceinfo_bootimg_override_initramfs=""
+deviceinfo_bootloader_grub=""
 deviceinfo_cgpt_kpart=""
 deviceinfo_depthcharge_board=""
 deviceinfo_dtb=""
 deviceinfo_header_version=""
+deviceinfo_efi=""
+deviceinfo_efi_arch=""
 deviceinfo_flash_offset_base=""
 deviceinfo_flash_offset_dtb=""
 deviceinfo_flash_offset_kernel=""
@@ -152,6 +155,8 @@ validate_deviceinfo() {
 		deviceinfo_bootimg_override_payload_compression \
 		deviceinfo_bootimg_pxa \
 		deviceinfo_bootimg_qcdt \
+		deviceinfo_bootloader_grub \
+		deviceinfo_efi \
 		deviceinfo_flash_kernel_on_update \
 		deviceinfo_generate_bootimg \
 		deviceinfo_generate_depthcharge_image \
@@ -454,6 +459,24 @@ get_efi_arch() {
 		log "ERROR: unsupported architecture: $deviceinfo_arch"
 		exit 1
 	fi
+}
+
+add_grub_efi() {
+	[ "$deviceinfo_efi" = "true" ] || return 0
+
+	log_arrow "grub-efi: adding support"
+
+	# use arch from deviceinfo if it's set, else detect automatically
+	local _efi_arch="$deviceinfo_efi_arch"
+	[ -z "$_efi_arch" ] && _efi_arch="$(get_efi_arch)"
+
+	local _efi_app="boot${_efi_arch}.efi"
+	if [ ! -e "/usr/lib/grub/efi/$_efi_app" ]; then
+		log "ERROR: required grub EFI app was not found: /usr/lib/grub/efi/$_efi_app"
+		exit 1
+	fi
+	copy "/usr/lib/grub/efi/$_efi_app" "$work_dir/$_efi_app"
+	additional_files="$additional_files $_efi_app:efi/boot/$_efi_app"
 }
 
 # Add support for gummiboot by generating necessary config and adding
