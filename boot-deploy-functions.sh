@@ -35,7 +35,6 @@ deviceinfo_flash_pagesize=""
 deviceinfo_generate_bootimg=""
 deviceinfo_generate_depthcharge_image=""
 deviceinfo_generate_extlinux_config=""
-deviceinfo_generate_grub_config=""
 deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_generate_gummiboot=""
@@ -161,7 +160,6 @@ validate_deviceinfo() {
 		deviceinfo_generate_bootimg \
 		deviceinfo_generate_depthcharge_image \
 		deviceinfo_generate_extlinux_config \
-		deviceinfo_generate_grub_config \
 		deviceinfo_generate_gummiboot \
 		deviceinfo_generate_legacy_uboot_initfs \
 		deviceinfo_generate_uboot_fit_images \
@@ -461,6 +459,13 @@ get_efi_arch() {
 	fi
 }
 
+add_grub() {
+	[ "$deviceinfo_bootloader_grub" = "true" ] || return 0
+
+	add_grub_efi
+	create_grub_config
+}
+
 add_grub_efi() {
 	[ "$deviceinfo_efi" = "true" ] || return 0
 
@@ -730,8 +735,6 @@ EOF
 }
 
 create_grub_config() {
-	[ "${deviceinfo_generate_grub_config}" = "true" ] || return 0
-
 	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
 		log "ERROR: deviceinfo_dtb contains more than one dtb"
 		exit 1

@@ -26,9 +26,8 @@ create_uboot_files
 create_bootimg
 create_depthcharge_kernel_image
 create_extlinux_config
-create_grub_config
 add_gummiboot
-add_grub_efi
+add_grub
 
 mkdir -p "$output_dir"
 
