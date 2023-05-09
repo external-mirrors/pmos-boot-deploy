@@ -880,14 +880,8 @@ find_dtb() {
 
 	local _dtb_found="false"
 	local _dtb=
-	# Modern postmarketOS dtb path
-	if [ -e "/boot/dtbs/$_filename.dtb" ]; then
-		_dtb="/boot/dtbs/$_filename.dtb"
-		_dtb_found="true"
-	fi
-	# Alpine-style dtb paths
-	if [ -e "$(find /boot -path "/boot/dtbs-*/$_filename.dtb")" ] && [ "$_dtb_found" = "false" ]; then
-		_dtb=$(find /boot -path "/boot/dtbs-*/$_filename.dtb")
+	# Alpine and modern pmOS dtb paths
+	if _dtb="$(find /boot -path "/boot/dtbs*/$_filename.dtb")"; then
 		_dtb_found="true"
 	fi
 	# Legacy postmarketOS dtb path (for backwards compatibility)
@@ -897,8 +891,7 @@ find_dtb() {
 	fi
 	if [ "$_dtb_found" = "false" ]; then
 		log "ERROR: Unable to find $_filename.dtb in the following locations:"
-		log "    - /boot/dtbs/"
-		log "    - /boot/dtbs-*/"
+		log "    - /boot/dtbs*"
 		log "    - /usr/share/dtb/"
 		exit 1
 	fi
