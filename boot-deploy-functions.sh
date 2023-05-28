@@ -530,7 +530,6 @@ create_bootimg() {
 
 		if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
 			_kernelfile="${_kernelfile}-mtk"
-			kernelfile="${kernelfile}-mtk"
 		fi
 	fi
 
