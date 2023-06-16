@@ -777,7 +777,7 @@ parse_crypttab_entry() {
 	IFS=$'\n'
 	for _entry in $_crypttab; do
 		if [ "$(echo "$_entry" | xargs | cut -d" " -f1)" = "$1" ]; then
-			ret="$(echo "$_entry" | xargs | cut -d" " -f2)"
+			_ret="$(echo "$_entry" | xargs | cut -d" " -f2)"
 		fi
 	done
 	unset IFS

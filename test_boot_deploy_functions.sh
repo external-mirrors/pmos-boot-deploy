@@ -18,7 +18,7 @@ test_get_size_of_files() {
 	# exact size depends on the filesystem, so just make sure it's roughly in the same ballpark
 	if [ "$_size" -ge 225 ] || [ "$_size" -le 150 ]; then
 		echo "test_get_size_of_files: failed, expected: ~150-225 kilobytes, got: $_size kilobytes"
-		ret=1
+		_ret=1
 	fi
 
 	[ $_ret -eq 0 ] && echo "test_get_size_of_files: pass"
