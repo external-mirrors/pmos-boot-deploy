@@ -140,6 +140,12 @@ get_free_space() {
 validate_deviceinfo() {
 	local _fail=false
 
+	# deviceinfo_arch must exist. If this is missing, something is off
+	if [ -z "$deviceinfo_arch" ]; then
+		log "ERROR: required variable 'deviceinfo_arch' is unset in the given deviceinfo"
+		exit 1
+	fi
+
 	# These variables have values that are used by the script to do string
 	# comparison, and should be lower case since sh doesn't support
 	# case-insensitive comparisons.
