@@ -700,6 +700,11 @@ create_extlinux_config() {
 
 	log_arrow "Generating extlinux.conf"
 
+	local _cmdline_line=""
+	if [ ! "$(get_cmdline)" = " " ]; then
+		_cmdline_line="append $(get_cmdline)"
+	fi
+
 	cat <<EOF > "$work_dir/extlinux.conf"
 timeout 1
 default $distro_name
@@ -709,8 +714,9 @@ label $distro_name
 	kernel /$kernel_filename
 	fdt /$(basename "$deviceinfo_dtb").dtb
 	initrd /$initfs_filename
-	append $(get_cmdline)
+	$_cmdline_line
 EOF
+
 	additional_files="$additional_files extlinux.conf:/extlinux/extlinux.conf"
 }
 
