@@ -693,12 +693,20 @@ flash_updated_depthcharge_kernel() {
 create_extlinux_config() {
 	[ "${deviceinfo_generate_extlinux_config}" = "true" ] || return 0
 
-	if [ "$(echo "$deviceinfo_dtb" | wc -w)" -gt 1 ]; then
-		log "ERROR: deviceinfo_dtb contains more than one dtb"
-		exit 1
-	fi
-
 	log_arrow "Generating extlinux.conf"
+
+	local _dtbs_count
+	_dtbs_count="$(echo "$deviceinfo_dtb" | wc -w)"
+
+	local _fdt_line
+	if [ "$_dtbs_count" -eq 1 ]; then
+		# If there is only single dtb specified, add it as "fdt" property
+		_fdt_line="fdt /$(basename "$deviceinfo_dtb").dtb"
+	elif [ "$_dtbs_count" -gt 1 ]; then
+		# If there are multiple dtbs specified, all of these dtbs will
+		# be copied to /boot, so it is good enough to use "fdtdir /"
+		_fdt_line="fdtdir /"
+	fi
 
 	local _cmdline_line=""
 	if [ ! "$(get_cmdline)" = " " ]; then
@@ -712,7 +720,7 @@ menu title boot prev kernel
 
 label $distro_name
 	kernel /$kernel_filename
-	fdt /$(basename "$deviceinfo_dtb").dtb
+	$_fdt_line
 	initrd /$initfs_filename
 	$_cmdline_line
 EOF
