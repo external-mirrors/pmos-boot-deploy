@@ -331,7 +331,7 @@ append_or_copy_dtb() {
 
 	local _dtb=""
 	for _filename in $deviceinfo_dtb; do
-		dtb="$_dtb $(find_dtb "$_filename")"
+		_dtb="$_dtb $(find_dtb "$_filename")"
 	done
 
 	# Remove excess whitespace
@@ -347,10 +347,10 @@ append_or_copy_dtb() {
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
 		log_arrow "kernel: appending device-tree ${deviceinfo_dtb}"
 		# shellcheck disable=SC2086
-		cat "$work_dir/$kernel_filename" $dtb > "$_outfile"
+		cat "$work_dir/$kernel_filename" $_dtb > "$_outfile"
 		additional_files="$additional_files $(basename "$_outfile")"
 	else
-		for _dtb_path in $dtb; do
+		for _dtb_path in $_dtb; do
 			local _dtb_filename
 			_dtb_filename=$(basename "$_dtb_path")
 			copy "$_dtb_path" "$work_dir/$_dtb_filename"
@@ -585,7 +585,7 @@ create_bootimg() {
 			log "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
-		deviceinfo_bootimg_custom_args="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $dtb"
+		deviceinfo_bootimg_custom_args="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $_dt"
 	fi
 
 	local _ramdisk="$work_dir/$initfs_filename"
