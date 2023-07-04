@@ -911,7 +911,7 @@ find_dtb() {
 	local _dtb_found="false"
 	local _dtb=
 	# Alpine and modern pmOS dtb paths
-	if _dtb="$(find /boot -path "/boot/dtbs*/$_filename.dtb")"; then
+	if _dtb="$(find /boot -path "/boot/dtbs*/$_filename.dtb")" && [ -n "$_dtb" ] ; then
 		_dtb_found="true"
 	fi
 	# Legacy postmarketOS dtb path (for backwards compatibility)

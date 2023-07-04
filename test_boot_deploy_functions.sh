@@ -53,8 +53,20 @@ test_copy_files() {
 	return $_ret
 }
 
+test_invalid_dtb() {
+	# shellcheck disable=SC2091
+	if $(find_dtb "bogus_dts") ; then
+		echo "test_invalid_dtb: find_dtb should've failed"
+		return 1
+	fi
+
+	echo "test_invalid_dtb: pass"
+	return 0
+}
+
 test_get_size_of_files
 test_copy_files
+test_invalid_dtb
 
 rm -rf "$wdir"
 trap - INT EXIT TERM
