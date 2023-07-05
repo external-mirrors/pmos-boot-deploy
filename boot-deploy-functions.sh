@@ -548,6 +548,8 @@ create_bootimg() {
 		fi
 	fi
 
+	local _dtb=""
+	_dtb="$(find_dtb "$deviceinfo_dtb")"
 
 	local _second=""
 	if [ "${deviceinfo_bootimg_dtb_second}" = "true" ]; then
@@ -558,13 +560,15 @@ create_bootimg() {
 			log "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
-		local _dtb
-		_dtb=$(find_dtb "$deviceinfo_dtb")
+		if [ -z "${_dtb}" ]; then
+			log "ERROR: Couldn't find DTB for ${deviceinfo_dtb}"
+			exit 1
+		fi
 		_second="--second $_dtb"
 	fi
-	local _dt=""
+	local _dt_img=""
 	if [ "${deviceinfo_bootimg_qcdt}" = "true" ]; then
-		_dt="--dt /boot/dt.img"
+		_dt_img="--dt /boot/dt.img"
 		if ! [ -e "/boot/dt.img" ]; then
 			log "ERROR: File not found: /boot/dt.img, but"
 			log "'deviceinfo_bootimg_qcdt' is set. Please verify that your"
@@ -577,6 +581,9 @@ create_bootimg() {
 		fi
 	fi
 
+	local _header_v2=""
+	# XXX: Some deviceinfo files used custom_args for header v2 support before it was implemented
+	# here. We check if deviceinfo_bootimg_custom_args is set to avoid breaking those devices.
 	if [ "$deviceinfo_header_version" = "2" ] && [ -z "$deviceinfo_bootimg_custom_args" ]; then
 		if [ -z "$deviceinfo_flash_offset_dtb" ]; then
 			log "ERROR: deviceinfo_header_version is 2, but"
@@ -585,7 +592,17 @@ create_bootimg() {
 			log "See also: <https://postmarketos.org/deviceinfo>"
 			exit 1
 		fi
-		deviceinfo_bootimg_custom_args="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $_dt"
+		if [ -z "${deviceinfo_dtb}" ]; then
+			log "ERROR: deviceinfo_header_version is 2, but"
+			log "'deviceinfo_dtb' is missing. Set 'deviceinfo_dtb'"
+			log "to the device tree blob for your device."
+			log "See also: <https://postmarketos.org/deviceinfo>"
+		fi
+		if [ -z "${_dtb}" ]; then
+			log "ERROR: Couldn't find DTB for ${deviceinfo_dtb}"
+			exit 1
+		fi
+		_header_v2="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $_dtb"
 	fi
 
 	local _ramdisk="$work_dir/$initfs_filename"
@@ -611,7 +628,8 @@ create_bootimg() {
 		--tags_offset "${deviceinfo_flash_offset_tags}" \
 		--pagesize "${deviceinfo_flash_pagesize}" \
 		${_second} \
-		${_dt} \
+		${_dt_img} \
+		${_header_v2} \
 		${deviceinfo_bootimg_custom_args} \
 		-o "$_bootimg" || exit 1
 	# shellcheck disable=SC3060
