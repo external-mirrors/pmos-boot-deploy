@@ -1,0 +1,9 @@
+timeout 1
+default postmarketOS
+menu title boot prev kernel
+
+label postmarketOS
+	kernel /vmlinuz
+	fdt /mt8173-elm-hana.dtb
+	initrd /initramfs
+	

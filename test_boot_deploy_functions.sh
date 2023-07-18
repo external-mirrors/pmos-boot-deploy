@@ -64,9 +64,99 @@ test_invalid_dtb() {
 	return 0
 }
 
+test_extlinux_config() {
+	work_dir="./"
+	# shellcheck disable=SC2034
+	deviceinfo_generate_extlinux_config="true"
+	# shellcheck disable=SC2034
+	distro_name="postmarketOS"
+	# shellcheck disable=SC2034
+	kernel_filename="vmlinuz"
+	# shellcheck disable=SC2034
+	initfs_filename="initramfs"
+	# shellcheck disable=SC2034
+	additional_files=""
+
+	local _ret=0
+	local _result
+	local _expected_result
+
+	# cmdline + 1 dtb
+
+	# shellcheck disable=SC2034
+	deviceinfo_dtb="mediatek/mt8173-elm-hana"
+
+	unset -f get_cmdline
+	get_cmdline() {
+		# shellcheck disable=SC2317
+		echo "test test test"
+	}
+
+	create_extlinux_config
+
+	_expected_result="$(cat extlinux-examples/extlinux.conf.1)"
+	_result="$(cat $work_dir/extlinux.conf)"
+
+	if [ ! "$_result" = "$_expected_result" ]; then
+		_ret=1
+		echo "test_extlinux_config (cmdline + 1 dtb): fail"
+	else
+		echo "test_extlinux_config (cmdline + 1 dtb): pass"
+	fi
+
+	# cmdline + multiple dtbs
+
+	# shellcheck disable=SC2034
+	deviceinfo_dtb="mediatek/mt8173-elm-hana mediatek/mt8173-elm-hana-rev7"
+
+	unset -f get_cmdline
+	get_cmdline() {
+		# shellcheck disable=SC2317
+		echo "test test test"
+	}
+
+	create_extlinux_config
+
+	_expected_result="$(cat extlinux-examples/extlinux.conf.2)"
+	_result="$(cat $work_dir/extlinux.conf)"
+
+	if [ ! "$_result" = "$_expected_result" ]; then
+		_ret=1
+		echo "test_extlinux_config (cmdline + multiple dtbs): fail"
+	else
+		echo "test_extlinux_config (cmdline + multiple dtbs): pass"
+	fi
+
+	# no cmdline + 1 dtb
+
+	# shellcheck disable=SC2034
+	deviceinfo_dtb="mediatek/mt8173-elm-hana"
+
+	unset -f get_cmdline
+	get_cmdline() {
+		# shellcheck disable=SC2317
+		echo " "
+	}
+
+	create_extlinux_config
+
+	_expected_result="$(cat extlinux-examples/extlinux.conf.3)"
+	_result="$(cat $work_dir/extlinux.conf)"
+
+	if [ ! "$_result" = "$_expected_result" ]; then
+		_ret=1
+		echo "test_extlinux_config (no cmdline + 1 dtb): fail"
+	else
+		echo "test_extlinux_config (no cmdline + 1 dtb)): pass"
+	fi
+
+	return $_ret
+}
+
 test_get_size_of_files
 test_copy_files
 test_invalid_dtb
+test_extlinux_config
 
 rm -rf "$wdir"
 trap - INT EXIT TERM

@@ -1,0 +1,9 @@
+timeout 1
+default postmarketOS
+menu title boot prev kernel
+
+label postmarketOS
+	kernel /vmlinuz
+	fdtdir /
+	initrd /initramfs
+	append test test test
