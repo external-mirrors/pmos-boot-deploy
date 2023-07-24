@@ -912,7 +912,7 @@ check_destination_free_space() {
 	echo "... OK!"
 }
 
-# $1: name of dtb to find
+# $1: name of dtb to find, supports globbing
 find_dtb() {
 	local _filename="$1"
 
@@ -921,15 +921,10 @@ find_dtb() {
 		exit 1
 	fi
 
-	# FIXME: Currently, this always uses the first dtb found, which may not always
-	# be correct. This should only be an issue if you have multiple kernels
-	# that provide the same dtb installed, which pmOS does not support, but it is
-	# still potentially unexpected behaviour.
-
 	local _dtb_found="false"
 	local _dtb=
 	# Alpine and modern pmOS dtb paths
-	if _dtb="$(find /boot -path "/boot/dtbs*/$_filename.dtb")" && [ -n "$_dtb" ] ; then
+	if _dtb="$(find /boot -path "/boot/dtbs*/$_filename.dtb" | sort | xargs)" && [ -n "$_dtb" ] ; then
 		_dtb_found="true"
 	fi
 	# Legacy postmarketOS dtb path (for backwards compatibility)
