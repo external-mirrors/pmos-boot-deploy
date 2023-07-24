@@ -81,6 +81,12 @@ test_extlinux_config() {
 	local _result
 	local _expected_result
 
+	# A dumb replacement for find_all_dtbs which doesn't work with globs
+	unset -f find_all_dtbs
+	find_all_dtbs() {
+		echo "$deviceinfo_dtb"
+	}
+
 	# cmdline + 1 dtb
 
 	# shellcheck disable=SC2034

@@ -712,7 +712,7 @@ create_extlinux_config() {
 	log_arrow "Generating extlinux.conf"
 
 	local _dtbs_count
-	_dtbs_count="$(echo "$deviceinfo_dtb" | wc -w)"
+	_dtbs_count="$(find_all_dtbs | wc -w)"
 
 	local _fdt_line
 	if [ "$_dtbs_count" -eq 1 ]; then
