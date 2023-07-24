@@ -153,9 +153,37 @@ test_extlinux_config() {
 	return $_ret
 }
 
+test_find_dtb() {
+	# the dtb search path is currently hard-coded in find_dtb to /boot/dtb, so
+	# let's doctor up the filename param to include the wdir path to let us
+	# test this without having to write to /boot
+
+	local _ret=0
+	local _result
+	dtb_boot_path="$wdir/find_dtb"
+	mkdir -p "$dtb_boot_path/dtbs"
+	touch "$dtb_boot_path/dtbs/test_a.dtb"
+	touch "$dtb_boot_path/dtbs/test_b.dtb"
+	local _expected="$dtb_boot_path/dtbs/test_a.dtb $dtb_boot_path/dtbs/test_b.dtb"
+
+	_result=$(find_dtb "test*")
+
+	if [ ! "$_result" = "$_expected" ]; then
+		_ret=1
+		echo "test_find_dtb failed"
+		echo "    expected: $_expected"
+		echo "    got: $_result"
+	else
+		echo "test_find_dtb: pass"
+	fi
+
+	return $_ret
+}
+
 test_get_size_of_files
 test_copy_files
 test_invalid_dtb
+test_find_dtb
 test_extlinux_config
 
 rm -rf "$wdir"

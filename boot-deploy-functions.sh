@@ -56,6 +56,9 @@ output_dir="/boot"
 additional_files=
 local_deviceinfo=""
 
+# vars declared globally to allow tests to mock/overwrite them
+dtb_boot_path="/boot"
+
 usage() {
 	printf "Usage:
 	%s -i <file> -k <file> -d <path> [-o <path>] [files...]
@@ -924,7 +927,7 @@ find_dtb() {
 	local _dtb_found="false"
 	local _dtb=
 	# Alpine and modern pmOS dtb paths
-	if _dtb="$(find /boot -path "/boot/dtbs*/$_filename.dtb" | sort | xargs)" && [ -n "$_dtb" ] ; then
+	if _dtb="$(find "$dtb_boot_path" -path "$dtb_boot_path/dtbs*/$_filename.dtb" | sort | xargs )" && [ -n "$_dtb" ] ; then
 		_dtb_found="true"
 	fi
 	# Legacy postmarketOS dtb path (for backwards compatibility)
@@ -934,7 +937,7 @@ find_dtb() {
 	fi
 	if [ "$_dtb_found" = "false" ]; then
 		log "ERROR: Unable to find $_filename.dtb in the following locations:"
-		log "    - /boot/dtbs*"
+		log "    - $dtb_boot_path/dtbs*"
 		log "    - /usr/share/dtb/"
 		exit 1
 	fi
