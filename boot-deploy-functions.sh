@@ -329,10 +329,8 @@ append_or_copy_dtb() {
 	fi
 	log_arrow "kernel: device-tree blob operations"
 
-	local _dtb=""
-	for _filename in $deviceinfo_dtb; do
-		_dtb="$_dtb $(find_dtb "$_filename")"
-	done
+	local _dtb
+	_dtb="$(find_all_dtbs)"
 
 	# Remove excess whitespace
 	_dtb=$(echo "$_dtb" | xargs)
@@ -945,6 +943,17 @@ find_dtb() {
 	fi
 
 	echo "$_dtb"
+}
+
+# Iterates through deviceinfo_dtb and calls find_dtb on each item
+find_all_dtbs() {
+	local _dtbs=""
+
+	for _filename in $deviceinfo_dtb; do
+		_dtbs="$_dtbs $(find_dtb "$_filename")"
+	done
+
+	echo "$_dtbs"
 }
 
 # $1: Message to log. Will be prefixed by an arrow.
