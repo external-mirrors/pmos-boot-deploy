@@ -547,7 +547,9 @@ create_bootimg() {
 	fi
 
 	local _dtb=""
-	_dtb="$(find_dtb "$deviceinfo_dtb")"
+	if [ -n "${deviceinfo_dtb}" ]; then
+		_dtb="$(find_dtb "$deviceinfo_dtb")"
+	fi
 
 	local _second=""
 	if [ "${deviceinfo_bootimg_dtb_second}" = "true" ]; then
