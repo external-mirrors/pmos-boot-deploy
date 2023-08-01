@@ -845,7 +845,20 @@ get_size_of_files() {
 }
 
 # $1: mount point
+# $2: field position in fstab
 parse_fstab_entry() {
+	local _mount_point="$1"
+	if [ -z "$_mount_point" ]; then
+		log "parse_fstab_entry(): No mount point specified"
+		exit 1
+	fi
+
+	local _field="$2"
+	if [ -z "$_field" ]; then
+		log "parse_fstab_entry(): No field specified"
+		exit 1
+	fi
+
 	local _fstab
 	_fstab=$(grep -v ^\# /etc/fstab | grep .)
 	local _ret=""
@@ -853,8 +866,8 @@ parse_fstab_entry() {
 	# shellcheck disable=SC3003
 	IFS=$'\n'
 	for _entry in $_fstab; do
-		if [ "$(echo "$_entry" | xargs | cut -d" " -f2)" = "$1" ]; then
-			_ret="$(echo "$_entry" | xargs | cut -d" " -f1)"
+		if [ "$(echo "$_entry" | xargs | cut -d" " -f2)" = "$_mount_point" ]; then
+			_ret="$(echo "$_entry" | xargs | cut -d" " -f"$_field")"
 		fi
 	done
 	unset IFS
@@ -885,10 +898,12 @@ get_cmdline() {
 
 	local _boot_uuid=""
 	local _root_uuid=""
+	local _root_opts=""
 
 	if [ -f "/etc/fstab" ]; then
-		_boot_uuid=$(parse_fstab_entry "/boot")
-		_root_uuid=$(parse_fstab_entry "/")
+		_boot_uuid=$(parse_fstab_entry "/boot" 1)
+		_root_uuid=$(parse_fstab_entry "/" 1)
+		_root_opts=$(parse_fstab_entry "/" 4)
 	fi
 
 	if [ -f "/etc/crypttab" ]; then
@@ -906,6 +921,10 @@ get_cmdline() {
 
 	if [ -n "$_root_uuid" ] && [ "$_root_uuid" != "${_root_uuid#UUID=}" ]; then
 		_ret="$_ret ${distro_prefix}_root_uuid=${_root_uuid#UUID=}"
+	fi
+
+	if [ -n "$_root_opts" ]; then
+		_ret="$_ret ${distro_prefix}_rootfsopts=${_root_opts}"
 	fi
 
 	echo "$_ret"
