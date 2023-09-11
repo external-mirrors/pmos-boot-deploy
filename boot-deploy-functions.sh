@@ -352,9 +352,35 @@ append_or_copy_dtb() {
 			local _dtb_filename
 			_dtb_filename=$(basename "$_dtb_path")
 			copy "$_dtb_path" "$work_dir/$_dtb_filename"
+			apply_dtbo "$work_dir/$_dtb_filename"
 			additional_files="$additional_files ${_dtb_filename}"
 		done
 	fi
+}
+
+# $1: dtb path
+apply_dtbo() {
+	require_package "fdtoverlay" "dtc" "apply_dtbo"
+
+	local _dtbo=""
+	_dtbo="$(find /boot/dtbo -name "*.dtbo" 2> /dev/null)"
+
+	# Remove excess whitespace
+	_dtbo=$(echo "$_dtbo" | xargs)
+
+	# Return if no dtbo found
+	if [ -z "$_dtbo" ]; then
+		return
+	fi
+
+	# Note: ftdoverlay can accept several overlays as arguments, make
+	# use of it here by passing them with "$_dtbo" variable when
+	# `find` execution above finds more than one overlay.
+	#
+	# From --help:
+	# fdtoverlay <options> [<overlay.dtbo> [<overlay.dtbo>]]
+
+	ftdoverlay --input "$1" --output "$1" "$_dtbo"
 }
 
 # Add Mediatek header to kernel & initramfs
