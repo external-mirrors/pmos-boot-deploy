@@ -525,6 +525,27 @@ add_systemd_boot() {
 	additional_files="$additional_files boot${_efi_arch}.efi:efi/boot/boot${_efi_arch}.efi"
 }
 
+# Add support for Unified Kernel Images (UKI)
+create_uki() {
+	[ "$deviceinfo_generate_uki" = "true" ] || return 0
+	require_package "efi-mkuki" "efi-mkuki" "generate_uki"
+	log_arrow "uki: creating Unified Kernel Image"
+
+	local _efi_arch
+	_efi_arch="$(get_efi_arch)"
+
+	local _uki_efi_app="boot${_efi_arch}.efi"
+
+	efi-mkuki \
+		-c "$(get_cmdline)" \
+		-o "$work_dir/$_uki_efi_app" \
+		-S /usr/lib/stubbyboot/linux"$_efi_arch".efi.stub \
+		"$work_dir/$kernel_filename" \
+		"$work_dir/$initfs_filename"
+
+	additional_files="$additional_files $_uki_efi_app:efi/boot/$_uki_efi_app"
+}
+
 # Add support for gummiboot by generating necessary config and adding
 # dependencies to $additional_files.
 add_gummiboot() {
