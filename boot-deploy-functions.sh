@@ -480,6 +480,30 @@ get_efi_arch() {
 	esac
 }
 
+
+# Generate a Bootloader Spec entry for the current kernel / initramfs
+# See: https://uapi-group.org/specifications/specs/boot_loader_specification/
+generate_bootloader_spec_conf() {
+	local _dtb=""
+	if [ -n "${deviceinfo_dtb}" ]; then
+		_dtb="$(find_dtb "$deviceinfo_dtb")"
+	fi
+	local _dtb_line
+	if [ -n "$_dtb" ]; then
+		_dtb_line="devicetree $(basename "$deviceinfo_dtb").dtb"
+	fi
+
+	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
+		title	$distro_name
+		linux	$kernel_filename
+		initrd	$initfs_filename
+		options $(get_cmdline)
+		$_dtb_line
+	EOF
+
+	additional_files="$additional_files ${distro_prefix}.conf:loader/entries/${distro_prefix}.conf"
+}
+
 # Add support for gummiboot by generating necessary config and adding
 # dependencies to $additional_files.
 add_gummiboot() {
@@ -487,13 +511,7 @@ add_gummiboot() {
 	require_package "gummiboot" "gummiboot" "generate_gummiboot"
 	log_arrow "gummiboot: adding support"
 
-	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
-		title	$distro_name
-		linux	$kernel_filename
-		initrd	$initfs_filename
-		options $(get_cmdline)
-	EOF
-	additional_files="$additional_files ${distro_prefix}.conf:/loader/entries/${distro_prefix}.conf"
+	generate_bootloader_spec_conf
 
 	local _efi_arch
 	_arch="$(get_efi_arch)"
