@@ -37,6 +37,7 @@ deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
 deviceinfo_generate_gummiboot=""
 deviceinfo_efi_arch=""
+deviceinfo_generate_systemd_boot=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
 deviceinfo_kernel_cmdline_append=""
@@ -166,6 +167,7 @@ validate_deviceinfo() {
 		deviceinfo_generate_extlinux_config \
 		deviceinfo_generate_grub_config \
 		deviceinfo_generate_gummiboot \
+		deviceinfo_generate_systemd_boot \
 		deviceinfo_generate_legacy_uboot_initfs \
 		deviceinfo_generate_uboot_fit_images \
 		deviceinfo_efi_arch \
@@ -480,7 +482,6 @@ get_efi_arch() {
 	esac
 }
 
-
 # Generate a Bootloader Spec entry for the current kernel / initramfs
 # See: https://uapi-group.org/specifications/specs/boot_loader_specification/
 generate_bootloader_spec_conf() {
@@ -502,6 +503,26 @@ generate_bootloader_spec_conf() {
 	EOF
 
 	additional_files="$additional_files ${distro_prefix}.conf:loader/entries/${distro_prefix}.conf"
+}
+
+# Add support for gummiboot by generating necessary config and adding
+# dependencies to $additional_files.
+add_systemd_boot() {
+	[ "$deviceinfo_generate_systemd_boot" = "true" ] || return 0
+	log_arrow "systemd-boot: adding support"
+
+	generate_bootloader_spec_conf
+
+	local _efi_arch
+	_efi_arch="$(get_efi_arch)"
+
+	local _efi_app="/usr/lib/systemd/boot/efi/systemd-boot${_efi_arch}.efi"
+	if [ ! -e "$_efi_app" ]; then
+		log "ERROR: the required EFI app was not found: $_efi_app"
+		exit 1
+	fi
+	copy "$_efi_app" "$work_dir/boot${_efi_arch}.efi"
+	additional_files="$additional_files boot${_efi_arch}.efi:efi/boot/boot${_efi_arch}.efi"
 }
 
 # Add support for gummiboot by generating necessary config and adding
