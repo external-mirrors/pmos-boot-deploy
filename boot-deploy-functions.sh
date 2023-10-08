@@ -505,13 +505,45 @@ generate_bootloader_spec_conf() {
 	additional_files="$additional_files ${distro_prefix}.conf:loader/entries/${distro_prefix}.conf"
 }
 
+# Create a Unified Kernel Image (UKI)
+create_uki() {
+	require_package "ukify" "ukify" "generate_systemd_boot"
+	log_arrow "uki: creating Unified Kernel Image"
+
+	local _efi_arch
+	_efi_arch="$(get_efi_arch)"
+
+	local _uki_efi_app="${distro_name}-uki-${_efi_arch}.efi"
+
+	local _dtb=""
+	if [ -n "${deviceinfo_dtb}" ]; then
+		_dtb="$(find_dtb "$deviceinfo_dtb")"
+	fi
+	local _dtb_arg
+	if [ -n "$_dtb" ]; then
+		_dtb_arg="--devicetree $(basename "$deviceinfo_dtb").dtb"
+	fi
+
+	ukify build \
+		--efi-arch "$_efi_arch" \
+		--linux "$work_dir/$kernel_filename" \
+		--initrd "$work_dir/$initfs_filename" \
+		--cmdline "$(get_cmdline)" \
+		--output "$work_dir/$_uki_efi_app" \
+		$_dtb_arg \
+		--stub /usr/lib/systemd/boot/efi/linux"$_efi_arch".efi.stub
+
+	# Location per https://uapi-group.org/specifications/specs/boot_loader_specification
+	additional_files="$additional_files $_uki_efi_app:efi/linux/$_uki_efi_app"
+}
+
 # Add support for gummiboot by generating necessary config and adding
 # dependencies to $additional_files.
 add_systemd_boot() {
 	[ "$deviceinfo_generate_systemd_boot" = "true" ] || return 0
 	log_arrow "systemd-boot: adding support"
 
-	generate_bootloader_spec_conf
+	create_uki
 
 	local _efi_arch
 	_efi_arch="$(get_efi_arch)"
@@ -523,27 +555,6 @@ add_systemd_boot() {
 	fi
 	copy "$_efi_app" "$work_dir/boot${_efi_arch}.efi"
 	additional_files="$additional_files boot${_efi_arch}.efi:efi/boot/boot${_efi_arch}.efi"
-}
-
-# Add support for Unified Kernel Images (UKI)
-create_uki() {
-	[ "$deviceinfo_generate_uki" = "true" ] || return 0
-	require_package "efi-mkuki" "efi-mkuki" "generate_uki"
-	log_arrow "uki: creating Unified Kernel Image"
-
-	local _efi_arch
-	_efi_arch="$(get_efi_arch)"
-
-	local _uki_efi_app="boot${_efi_arch}.efi"
-
-	efi-mkuki \
-		-c "$(get_cmdline)" \
-		-o "$work_dir/$_uki_efi_app" \
-		-S /usr/lib/stubbyboot/linux"$_efi_arch".efi.stub \
-		"$work_dir/$kernel_filename" \
-		"$work_dir/$initfs_filename"
-
-	additional_files="$additional_files $_uki_efi_app:efi/boot/$_uki_efi_app"
 }
 
 # Add support for gummiboot by generating necessary config and adding
