@@ -495,6 +495,7 @@ create_uboot_fit_image() {
 # See: https://uapi-group.org/specifications/specs/boot_loader_specification/
 generate_bootloader_spec_conf() {
 	local _dtb=""
+	local _kernel_filename="$kernel_filename"
 	if [ -n "${deviceinfo_dtb}" ]; then
 		_dtb="$(find_dtb "$deviceinfo_dtb")"
 	fi
@@ -503,11 +504,20 @@ generate_bootloader_spec_conf() {
 		_dtb_line="devicetree $(basename "$deviceinfo_dtb").dtb"
 	fi
 
+	# (assuming kernel_filename is "vmlinuz") if "vmlinuz.efi" exists then
+	# we should prefer using that as it will definitely include the ZBOOT
+	# EFI decompressor. It's possible that "vmlinuz" will exist but just be
+	# the regular GZIP compressed kernel and won't actually boot with
+	# systemd-boot
+	if [ -e "${output_dir}/${kernel_filename}.efi" ]; then
+		_kernel_filename="${kernel_filename}.efi"
+	fi
+
 	# TODO: need to guarantee that distro_prefix is always going to be
 	# compliant with the BLS!
 	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
 		title	$distro_name
-		linux	$kernel_filename
+		linux	$_kernel_filename
 		initrd	$initfs_filename
 		options $(get_cmdline)
 		$_dtb_line
