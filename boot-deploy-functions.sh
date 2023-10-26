@@ -227,6 +227,15 @@ source_boot_deploy_config() {
 	fi
 }
 
+execute_hooks() {
+	log_arrow "Running hooks"
+
+	for _hook in /usr/share/boot-deploy/hooks/* /etc/boot-deploy/hooks/*; do
+		[ ! -x "$_hook" ] && continue
+		sh "$_hook"
+	done
+}
+
 # Required command check with useful error message
 # $1: command (e.g. "mkimage")
 # $2: package (e.g. "u-boot-tools")

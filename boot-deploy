@@ -20,6 +20,13 @@ fi
 get_options "$@"
 source_deviceinfo
 source_boot_deploy_config
+
+# Hooks can be used to run scripts and binaries after source_*
+# functions are called. This allows users to run extra
+# pre-processing steps before boot-deploy continues with 
+# creating files for boot. 
+execute_hooks
+
 append_or_copy_dtb
 add_mtk_header
 create_uboot_files
