@@ -197,6 +197,9 @@ source_deviceinfo() {
 
 		# shellcheck disable=SC1090
 		. "$local_deviceinfo"
+	elif [ -f /usr/share/misc/source_deviceinfo ]; then
+		# shellcheck disable=SC1091
+		. /usr/share/misc/source_deviceinfo
 	else
 		# shellcheck disable=SC1091
 		[ -f /usr/share/deviceinfo/deviceinfo ] && . /usr/share/deviceinfo/deviceinfo
