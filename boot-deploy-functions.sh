@@ -361,14 +361,17 @@ append_or_copy_dtb() {
 		# shellcheck disable=SC2086
 		cat "$work_dir/$kernel_filename" $_dtb > "$_outfile"
 		additional_files="$additional_files $(basename "$_outfile")"
-	else
-		for _dtb_path in $_dtb; do
-			local _dtb_filename
-			_dtb_filename=$(basename "$_dtb_path")
-			copy "$_dtb_path" "$work_dir/$_dtb_filename"
-			additional_files="$additional_files ${_dtb_filename}"
-		done
 	fi
+
+	# In some corner cases, where multiple bootloader implementations
+	# can be used, user can request both appended dtb and FS based boot config.
+	# Thus we always copy the dtb files into the boot fs.
+	for _dtb_path in $_dtb; do
+		local _dtb_filename
+		_dtb_filename=$(basename "$_dtb_path")
+		copy "$_dtb_path" "$work_dir/$_dtb_filename"
+		additional_files="$additional_files ${_dtb_filename}"
+	done
 }
 
 # Add MediaTek header to kernel and/or initramfs
