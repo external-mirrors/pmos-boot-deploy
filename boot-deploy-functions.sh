@@ -11,6 +11,8 @@ deviceinfo_bootimg_append_seandroidenforce=""
 deviceinfo_bootimg_custom_args=""
 deviceinfo_bootimg_blobpack=""
 deviceinfo_bootimg_dtb_second=""
+deviceinfo_bootimg_mtk_label_kernel=""
+deviceinfo_bootimg_mtk_label_ramdisk=""
 deviceinfo_bootimg_mtk_mkimage=""
 deviceinfo_bootimg_pxa=""
 deviceinfo_bootimg_qcdt=""
@@ -366,24 +368,47 @@ append_or_copy_dtb() {
 	fi
 }
 
-# Add Mediatek header to kernel & initramfs
+# Add MediaTek header to kernel and/or initramfs
 add_mtk_header() {
-	[ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ] || return 0
-	require_package "mtk-mkimage" "mtk-mkimage" "bootimg_mtk_mkimage"
+	local _kernel_label=""
+	local _ramdisk_label=""
 
-	local _infile="$work_dir/$initfs_filename"
-	local _outfile="$work_dir/$initfs_filename.mtk"
-	log_arrow "initramfs: adding Mediatek header"
-	mtk-mkimage ROOTFS "$_infile" "$_outfile"
-	copy "$_outfile" "$_infile"
-	rm "$_outfile"
+	if [ -n "${deviceinfo_bootimg_mtk_label_kernel}" ]; then
+		_kernel_label=$deviceinfo_bootimg_mtk_label_kernel
+	fi
+	if [ -n "${deviceinfo_bootimg_mtk_label_ramdisk}" ]; then
+		_ramdisk_label=$deviceinfo_bootimg_mtk_label_ramdisk
+	fi
 
-	log_arrow "kernel: adding Mediatek header"
-	# shellcheck disable=SC3060
-	local _kernel="$work_dir/$kernel_filename"
-	rm -f "${_kernel}-mtk"
-	mtk-mkimage KERNEL "$_kernel" "${_kernel}-mtk"
-	additional_files="$additional_files $(basename "${_kernel}"-mtk)"
+	if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
+		log "WARNING: bootimg_mtk_mkimage is deprecated and will be removed in the future."
+		log "Please use bootimg_mtk_label_kernel and bootimg_mtk_label_ramdisk instead."
+		_kernel_label="KERNEL"
+		_ramdisk_label="ROOTFS"
+	fi
+
+	if [ -n "${_kernel_label}" ] || [ -n "${_ramdisk_label}" ]; then
+		require_package "mtk-mkimage" "mtk-mkimage" "bootimg_mtk_mkimage"
+	else
+		return 0
+	fi
+
+	if [ -n "${_ramdisk_label}" ]; then
+		local _infile="$work_dir/$initfs_filename"
+		local _outfile="$work_dir/$initfs_filename.mtk"
+		log_arrow "initramfs: adding MediaTek header"
+		mtk-mkimage "${_ramdisk_label}" "$_infile" "$_outfile"
+		copy "$_outfile" "$_infile"
+		rm "$_outfile"
+	fi
+	if [ -n "${_kernel_label}" ]; then
+		log_arrow "kernel: adding MediaTek header"
+		# shellcheck disable=SC3060
+		local _kernel="$work_dir/$kernel_filename"
+		rm -f "${_kernel}-mtk"
+		mtk-mkimage "${_kernel_label}" "$_kernel" "${_kernel}-mtk"
+		additional_files="$additional_files $(basename "${_kernel}"-mtk)"
+	fi
 }
 
 create_uboot_files() {
@@ -567,7 +592,7 @@ create_bootimg() {
 			_kernelfile="${_kernelfile}-dtb"
 		fi
 
-		if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
+		if [ -e "${_kernelfile}-mtk" ]; then
 			_kernelfile="${_kernelfile}-mtk"
 		fi
 	fi
