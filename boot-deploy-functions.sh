@@ -362,7 +362,6 @@ append_or_copy_dtb() {
 		log_arrow "kernel: appending device-tree ${deviceinfo_dtb}"
 		# shellcheck disable=SC2086
 		cat "$work_dir/$kernel_filename" $_dtb > "$_outfile"
-		additional_files="$additional_files $(basename "$_outfile")"
 	fi
 
 	# In some corner cases, where multiple bootloader implementations
