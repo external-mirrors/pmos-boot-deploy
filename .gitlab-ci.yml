@@ -3,25 +3,50 @@
 # global settings
 image: alpine:latest
 
-# defaults for "only"
-# We need to run the CI jobs in a "merge request specific context", if CI is
-# running in a merge request. Otherwise the environment variable that holds the
-# merge request ID is not available. This means, we must set the "only"
-# variable accordingly - and if we only do it for one job, all other jobs will
-# not get executed. So have the defaults here, and use them in all jobs that
-# should run on both the master branch, and in merge requests.
-# https://docs.gitlab.com/ee/ci/merge_request_pipelines/index.html#excluding-certain-jobs
-.only-default: &only-default
-  only:
-    - master
-    - merge_requests
-    - tags
+stages:
+  - unit tests
+  - integration tests
 
-tests:
-  <<: *only-default
+unit tests:
+  stage: unit tests
   before_script:
     - adduser -D build
   script:
     - .ci/run.sh
   artifacts:
     expire_in: 1 week
+
+integration test:
+  stage: integration tests
+  before_script:
+    - apk add curl android-tools file
+    - curl -fsSL "https://gitlab.com/postmarketOS/ci-common/-/raw/master/install_pmbootstrap.sh" | sh
+    - su pmos -c "pmbootstrap config device ${DEVICE}"
+    - su pmos -c "pmbootstrap config ui none"
+  script:
+    - su pmos -c .ci/integration_test.sh
+  after_script:
+    - cp /home/pmos/.local/var/pmbootstrap/log.txt $CI_PROJECT_DIR
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - log.txt
+      - work/
+      - boot/
+      - bootimg_extract/
+  parallel:
+    # NOTE: the pinephone isn't here because boot-deploy is pretty much just a nop
+    # on that device.
+    matrix:
+      # Android device with appended DTB and standard boot.img
+      - DEVICE: oneplus-enchilada
+      # Chromebook with depthcharge image (creates /boot/vmlinuz.kpart)
+      - DEVICE: google-veyron
+      # ThinkPad x13s generates systemd-boot config
+      - DEVICE: lenovo-21bx
+      # Another standard Android device, but an msm8916 one
+      - DEVICE: samsung-a5
+      # extlinux
+      - DEVICE: pine64-pinebookpro
+
