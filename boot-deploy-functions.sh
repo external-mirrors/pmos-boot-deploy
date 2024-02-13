@@ -513,11 +513,16 @@ generate_bootloader_spec_conf() {
 		_kernel_filename="${kernel_filename}.efi"
 	fi
 
-	# TODO: need to guarantee that distro_prefix is always going to be
-	# compliant with the BLS!
+	# Notes:
+	# 	- The ucode lines need to come before the real initramfs in the final
+	# 	bootloader config, see:
+	# 	https://www.kernel.org/doc/html/next/x86/microcode.html
+	# 	- TODO: need to guarantee that distro_prefix is always going to be
+	# 	compliant with the BLS!
 	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
 		title	$distro_name
 		linux	$_kernel_filename
+		$(printf "%s" "$(list_ucode $output_dir)" | sed 's|^|initrd\t|')
 		initrd	$initfs_filename
 		options $(get_cmdline)
 		$_dtb_line
@@ -866,6 +871,7 @@ timeout=0
 
 menuentry "$distro_name" {
 	linux /$kernel_filename $(get_cmdline)
+	$(printf "%s" "$(list_ucode $output_dir)" | sed 's|^|initrd /|')
 	initrd /$initfs_filename
 	$_dtb_line
 }
@@ -971,6 +977,14 @@ get_cmdline() {
 	fi
 
 	echo "$_ret"
+}
+
+# Returns the relative path to ucode files under the given directory
+# $1: directory to ucode file(s)
+list_ucode() {
+	local _path="$1"
+
+	find "$_path" -name "*ucode.img" -exec basename {} \;
 }
 
 # Check that the the given list of files can be copied to the destination, $output_dir,
