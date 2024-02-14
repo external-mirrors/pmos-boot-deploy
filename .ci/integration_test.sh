@@ -185,8 +185,7 @@ sudo mv "$rootfs/$output_dir" boot
 # set +x
 
 boot_dir="boot"
-# FIXME: change this to $work_dir with MR 50
-kernel_with_dtb="$boot_dir/$kernel_filename"
+kernel_with_dtb="work/$kernel_filename"
 
 ##
 ## Inspect the chroot and validate boot-deploy behaviour
