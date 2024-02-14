@@ -32,13 +32,14 @@ assert_exists() {
 		echo "ERROR: assert_exists: no argument given"
 		exit 1
 	fi
-	# Use find so we support globbing
-	if ! find . -wholename "$1" >/dev/null 2>&1; then
-		echo "ERROR: assert_exists: file not found: $1"
+
+	if [ ! -e "$1" ]; then
+		echo "    ❌ $1 NOT found"
 		return
 	fi
 
 	_files="$(find . -wholename "$1")"
+
 	# And check it's not empty!
 	for _file in $_files; do
 		if [ ! -s "$_file" ]; then
