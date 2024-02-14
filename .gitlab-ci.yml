@@ -49,4 +49,5 @@ integration test:
       - DEVICE: samsung-a5
       # extlinux
       - DEVICE: pine64-pinebookpro
-
+      # sd-boot + CPU microcode config
+      - DEVICE: generic-x86_64

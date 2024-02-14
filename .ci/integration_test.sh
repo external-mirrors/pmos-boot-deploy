@@ -23,6 +23,7 @@ deviceinfo_generate_systemd_boot=""
 deviceinfo_append_dtb=""
 deviceinfo_dtb=""
 deviceinfo_cgpt_kpart=""
+deviceinfo_arch=""
 
 assert_failed=""
 
@@ -239,8 +240,6 @@ validate_systemd_boot() {
 		return
 	fi
 
-	assert_exists "boot/efi/boot/bootaa64.efi"
-
 	local sd_conf="boot/loader/entries/${distro_prefix}.conf"
 	assert_exists "$sd_conf"
 
@@ -262,6 +261,37 @@ validate_systemd_boot() {
 
 	sd_kernel="$(parse_conf_entry "linux" "$sd_conf")"
 	assert_equal "$(basename "$kernel_filename")" "$sd_kernel"
+
+	# Arch-specific checks
+	case "$deviceinfo_arch" in
+		aarch64)
+			assert_exists "boot/efi/boot/bootaa64.efi" ;;
+		x86_64)
+			assert_exists "boot/efi/boot/bootia32.efi"
+			assert_exists "boot/efi/boot/bootx64.efi"
+
+			local _found=false
+			for entry in $(parse_conf_entry "initrd" "$sd_conf"); do
+				if echo "$entry" | grep -Eq "^\w+-ucode.img$"; then
+					_found=true
+					break
+				fi
+			done
+			if "$_found"; then
+				echo "    ✅ CPU microcode entry exists"
+			else
+				echo "    ❌ CPU microcode entry NOT found"
+				exit 1
+			fi
+			;;
+		armv7)
+			assert_exists "boot/efi/boot/bootarm.efi" ;;
+		riscv64)
+			assert_exists "boot/efi/boot/bootriscv64.efi" ;;
+		*)
+			echo "ERROR: unsupported CPU arch: $deviceinfo_arch"
+			exit 1
+	esac
 }
 
 validate_depthcharge() {
