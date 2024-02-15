@@ -130,7 +130,12 @@ do
 	esac
 done
 
-cp -r "\$work_dir" "\$work_dir.copy"
+# Move the work dir and create a symlink back to the original location to
+# preserve its contents, especially anything new created by boot-deploy that
+# will be used in later testing. mkinitfs will delete the symlink instead of
+# the actual work dir contents.
+mv "\$work_dir" "\$work_dir.copy"
+ln -s "\$work_dir.copy" "\$work_dir"
 
 # Boot-deploy gets run twice so clear the args file
 echo "" > /tmp/boot-deploy.args
