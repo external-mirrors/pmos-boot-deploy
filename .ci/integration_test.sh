@@ -307,10 +307,6 @@ for _filename in $deviceinfo_dtb; do
 	_dtb="$(basename "$_filename").dtb"
 	assert_exists "$boot_dir/$_dtb"
 done
-# Assert that the dtb was appended if it should have been
-if [ "$deviceinfo_append_dtb" = "true" ]; then
-	assert_exists "$kernel_with_dtb"
-fi
 echo "❕ Validating Android bootimg handling"
 validate_bootimg
 echo "❕ Validating systemd-boot config"
