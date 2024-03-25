@@ -1097,9 +1097,9 @@ log_arrow() {
 	log "==> $1"
 }
 
-# $1: Message to log.
+# $@: Same interface as the one provided by echo.
 log() {
 	# Redirect the message to stderr so it doesn't get captured as a "return
 	# value" in functions that use stdout for returning data.
-	echo "$1" 1>&2
+	echo "$@" 1>&2
 }
