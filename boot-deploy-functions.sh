@@ -762,8 +762,6 @@ create_bootimg() {
 
 flash_updated_boot_parts() {
 	[ "${deviceinfo_flash_kernel_on_update}" = "true" ] || return 0
-	# If postmarketos-update-kernel is not installed then nop
-	[ -f /sbin/pmos-update-kernel ] || return 0
 	# Don't run when in a pmOS chroot
 	if [ -f "/in-pmbootstrap" ]; then
 		log_arrow "Not flashing boot in chroot"
@@ -771,7 +769,77 @@ flash_updated_boot_parts() {
 	fi
 
 	log_arrow "Flashing boot image"
-	pmos-update-kernel
+
+	local method="${deviceinfo_flash_method:?}"
+	case $method in
+		fastboot)
+			flash_android_bootimg "${deviceinfo_flash_fastboot_partition_kernel:-boot}"
+			;;
+		heimdall-bootimg)
+			flash_android_bootimg "${deviceinfo_flash_heimdall_partition_kernel:-KERNEL}"
+			;;
+		heimdall-isorec)
+			flash_android_split_kernel_initfs
+			;;
+		*)
+			log "Flash method \"$method\" is not supported for deviceinfo_flash_kernel_on_update=true."
+			return 1
+			;;
+	esac
+	log "Done."
+}
+
+# On A/B devices with bootloader cmdline ON this will return the slot suffix
+# if booting with an alternate method which erases the stock bootloader cmdline
+# this will be empty and the update will fail.
+# https://source.android.com/devices/bootloader/updating#slots
+# On non-A/B devices this will be empty
+ab_get_slot() {
+	local ab_slot_suffix
+	ab_slot_suffix=$(grep -o 'androidboot\.slot_suffix=..' /proc/cmdline |  cut -d "=" -f2) || :
+	echo "$ab_slot_suffix"
+}
+
+# $1: partition to flash from deviceinfo
+flash_android_bootimg() {
+	local partition="$1"
+	local boot_part_suffix
+	local boot_partition
+	boot_part_suffix=$(ab_get_slot) # Empty for non-A/B devices
+	boot_partition=$(findfs PARTLABEL="${partition}${boot_part_suffix}")
+	log "Flashing boot.img to '${partition}${boot_part_suffix}'"
+	dd if="$work_dir/boot.img" of="$boot_partition" bs=1M
+}
+
+flash_android_split_kernel_initfs() {
+	local kernel_partition
+	local initfs_partition
+	kernel_partition=$(findfs PARTLABEL="${deviceinfo_flash_heimdall_partition_kernel:?}")
+	initfs_partition=$(findfs PARTLABEL="${deviceinfo_flash_heimdall_partition_initfs:?}")
+
+	if [ -z "$kernel_partition" ]; then
+		log -n "Couldn't find Heimdall kernel partition! Is"
+		log " deviceinfo_flash_heimdall_partition_kernel set correctly?"
+		return 1
+	fi
+
+	if [ -z "$initfs_partition" ]; then
+		log -n "Couldn't find Heimdall initfs partition! Is"
+		log " deviceinfo_flash_heimdall_partition_initfs set correctly?"
+		return 1
+	fi
+
+	local _kernel_path
+	_kernel_path="$work_dir"/"$kernel_filename"
+	if [ "${deviceinfo_append_dtb}" = "true" ]; then
+		_kernel_path="$_kernel_path-dtb"
+	fi
+
+	log "Flashing kernel ($_kernel_path) ..."
+	dd if="$_kernel_path" of="$kernel_partition" bs=1M
+
+	log "Flashing initramfs ..."
+	gunzip -c "$work_dir/$initfs_filename" | lzop | dd of="$initfs_partition" bs=1M
 }
 
 # Chrome OS devices
