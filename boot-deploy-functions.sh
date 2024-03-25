@@ -869,8 +869,6 @@ create_depthcharge_kernel_image() {
 flash_updated_depthcharge_kernel() {
 	[ "${deviceinfo_generate_depthcharge_image}" = "true" ] || return 0
 
-	[ -f /sbin/pmos-update-depthcharge-kernel ] || return 0
-
 	# Don't run when in a pmOS chroot
 	if [ -f "/in-pmbootstrap" ]; then
 		log_arrow "Not flashing vmlinuz.kpart in chroot"
@@ -878,7 +876,27 @@ flash_updated_depthcharge_kernel() {
 	fi
 
 	log_arrow "Flashing depthcharge kernel image"
-	pmos-update-depthcharge-kernel
+
+	local guid
+	local partition
+
+	# shellcheck disable=SC2013
+	for x in $(cat /proc/cmdline); do
+		[ "$x" = "${x#kern_guid=}" ] && continue
+		guid="${x#kern_guid=}"
+		partition=$(findfs PARTUUID="$guid")
+
+		if [ -z "$partition" ]; then
+			log -n "Failed to find partition to flash depthcharge kernel image"
+			log " to! Is kern_guid set correctly in /proc/cmdline?"
+			return 1
+		fi
+
+		log "Flashing $deviceinfo_cgpt_kpart to $partition"
+		dd if="$work_dir"/"$(basename "$deviceinfo_cgpt_kpart")" of="$partition"
+	done
+
+	log "Done."
 }
 
 create_extlinux_config() {
