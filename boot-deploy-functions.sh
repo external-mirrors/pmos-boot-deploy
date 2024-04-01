@@ -821,7 +821,7 @@ create_extlinux_config() {
 	local _dtbs_count
 	_dtbs_count="$(find_all_dtbs | wc -w)"
 
-	local _fdt_line
+	local _fdt_line=""
 	if [ "$_dtbs_count" -eq 1 ]; then
 		# If there is only single dtb specified, add it as "fdt" property
 		_fdt_line="fdt /$(basename "$deviceinfo_dtb").dtb"
