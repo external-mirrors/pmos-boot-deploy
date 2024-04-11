@@ -521,6 +521,7 @@ generate_bootloader_spec_conf() {
 	# 	compliant with the BLS!
 	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
 		title	$distro_name
+		sort-key $distro_name
 		linux	$_kernel_filename
 		$(printf "%s" "$(list_ucode $output_dir)" | sed 's|^|initrd\t|')
 		initrd	$initfs_filename
