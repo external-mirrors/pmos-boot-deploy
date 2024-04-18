@@ -578,9 +578,12 @@ create_bootimg() {
 	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
 		require_package "pxa-mkbootimg" "pxa-mkbootimg" "bootimg_pxa"
 		_mkbootimg=pxa-mkbootimg
-	else
+	elif [ -n "$(command -v mkbootimg-osm0sis)" ]; then
 		require_package "mkbootimg-osm0sis" "mkbootimg" "generate_bootimg"
 		_mkbootimg=mkbootimg-osm0sis
+	else
+		require_package "mkbootimg" "android-tools" "generate_bootimg"
+		_mkbootimg=mkbootimg
 	fi
 
 	log_arrow "initramfs: creating boot.img"
