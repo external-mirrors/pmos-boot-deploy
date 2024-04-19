@@ -210,17 +210,16 @@ validate_bootimg() {
 	assert_exists "$boot_dir/boot.img"
 
 	mkdir bootimg_extract
-	unpack_bootimg \
-		--boot_img "$boot_dir/boot.img" \
-		--out bootimg_extract \
-		--format=mkbootimg \
+	unpackbootimg \
+		--input "$boot_dir/boot.img" \
+		--output bootimg_extract \
 		> bootimg_extract/mkbootimg_args
 
 	# Check that the kernel and initramfs are in the boot image
 	# and match the source files
-	assert_same "$kernel_with_dtb" bootimg_extract/kernel
+	assert_same "$kernel_with_dtb" bootimg_extract/boot.img-kernel
 	echo "    Checking that the boot image contains the initramfs"
-	assert_equal "$(stat -c%s bootimg_extract/ramdisk)" "$(stat -c%s work/"$initfs_filename")"
+	assert_equal "$(stat -c%s bootimg_extract/boot.img-ramdisk)" "$(stat -c%s work/"$initfs_filename")"
 }
 
 parse_conf_entry() {

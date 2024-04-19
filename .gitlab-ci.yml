@@ -20,6 +20,7 @@ integration test:
   stage: integration tests
   before_script:
     - apk add curl android-tools file
+    - apk add --allow-untrusted -X http://mirror.postmarketos.org/postmarketos/master/ mkbootimg-osm0sis
     - curl -fsSL "https://gitlab.com/postmarketOS/ci-common/-/raw/master/install_pmbootstrap.sh" | sh
     - su pmos -c "pmbootstrap config device ${DEVICE}"
     - su pmos -c "pmbootstrap config ui none"
