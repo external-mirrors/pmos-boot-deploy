@@ -48,6 +48,8 @@ integration test:
       - DEVICE: lenovo-21bx
       # Another standard Android device, but an msm8916 one
       - DEVICE: samsung-a5
+      # Android device with a boot.img containing an exynos QCDT image
+      - DEVICE: samsung-on7xelte
       # extlinux
       - DEVICE: pine64-pinebookpro
       # sd-boot + CPU microcode config
