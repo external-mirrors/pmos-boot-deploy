@@ -601,7 +601,7 @@ create_bootimg() {
 	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
 		require_package "pxa-mkbootimg" "pxa-mkbootimg" "bootimg_pxa"
 		_mkbootimg=pxa-mkbootimg
-	elif [ -n "$(command -v mkbootimg-osm0sis)" ]; then
+	elif [ "${deviceinfo_bootimg_qcdt}" = "true" ]; then
 		require_package "mkbootimg-osm0sis" "mkbootimg" "generate_bootimg"
 		_mkbootimg=mkbootimg-osm0sis
 	else
