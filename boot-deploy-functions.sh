@@ -764,10 +764,17 @@ create_bootimg() {
 	additional_files="$additional_files $(basename "$_bootimg")"
 }
 
+is_in_chroot() {
+	# This compares the device and inode IDs for / to /proc/1/root, they do
+	# not match when in a chroot.
+	# It was taken from https://unix.stackexchange.com/a/14346, and this
+	# check is also what Debian does in their ischroot tool.
+	[ "$(stat -c %d:%i /)" != "$(stat -c %d:%i /proc/1/root/.)" ]
+}
+
 flash_updated_boot_parts() {
 	[ "${deviceinfo_flash_kernel_on_update}" = "true" ] || return 0
-	# Don't run when in a pmOS chroot
-	if [ -f "/in-pmbootstrap" ]; then
+	if is_in_chroot; then
 		log_arrow "Not flashing boot in chroot"
 		return 0
 	fi
@@ -873,8 +880,7 @@ create_depthcharge_kernel_image() {
 flash_updated_depthcharge_kernel() {
 	[ "${deviceinfo_generate_depthcharge_image}" = "true" ] || return 0
 
-	# Don't run when in a pmOS chroot
-	if [ -f "/in-pmbootstrap" ]; then
+	if is_in_chroot; then
 		log_arrow "Not flashing vmlinuz.kpart in chroot"
 		return 0
 	fi
