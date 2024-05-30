@@ -1,3 +1,29 @@
+Before sending a patch, it's helpful to consider some of the criteria that
+patches are evaluated against:
+
+- Use `local` for limiting scope of variables in functions
+- Do not hard-code `/boot`, use `$output_dir`
+- Only write to `$work_dir`, and anything you want copied to `$output_dir`
+should be added to `$additional_files`. For example, a function should do
+something like this to create a file and add it to the final destination /
+output directory:
+
+```
+foo() {
+	local thing="bar.img"
+	# create some new file
+	echo "bazz" > "$work_dir/$thing"
+
+	# copy the new file to the destination directory
+	additional_files="$additional_files $thing"
+}
+```
+
+There are lots of examples in the codebase where we try to stick to these
+things, and if you find examples of us not doing it then that is a bug :)
+
+# Developers guide
+
 ## Installing files into the output directory
 
 Functions should not install files directly into the output directory (e.g.

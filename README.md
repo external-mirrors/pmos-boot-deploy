@@ -53,3 +53,9 @@ The script implementation is found in `boot_deploy_functions.sh`, which it
 looks for under `/usr/share/boot-deploy/boot_deploy_functions.sh`. The default
 location can be overridden, e.g. for testing purposes, by setting the
 environment variable `BOOT_DEPLOY_FUNCTIONS`.
+
+
+## Contributing
+
+Thanks for wanting to help out! See `CONTRIBUTING.md` for important information
+about sending patches to add support for weird devices/bootloaders/whatever!
