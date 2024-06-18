@@ -834,6 +834,21 @@ flash_android_bootimg() {
 	boot_part_suffix=$(ab_get_slot) # Empty for non-A/B devices
 	boot_partition=$(findfs PARTLABEL="${partition}${boot_part_suffix}")
 	log "Flashing boot.img to '${partition}${boot_part_suffix}'"
+
+	local boot_img_size
+	# note: using 'du' instead of get_size_of_files since the function returns
+	# KiB and lsblk returns bytes, it saves us a conversion step
+	boot_img_size="$(du -b "$work_dir/boot.img" | cut -f1))"
+
+	local boot_part_size
+	boot_part_size="$(lsblk "$boot_partition" --noheadings --bytes --output size)"
+
+	if [ "$boot_img_size" -gt "$boot_part_size" ]; then
+		log "ERROR: Unable to install new boot.img, the image size ($boot_img_size bytes) is greater than the target partition size ($boot_part_size bytes)"
+		log "If this is the first time you're seeing this error, please try switching to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
+		exit 1
+	fi
+
 	dd if="$work_dir/boot.img" of="$boot_partition" bs=1M
 }
 
