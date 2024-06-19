@@ -858,17 +858,10 @@ flash_android_bootimg() {
 	boot_partition=$(findfs PARTLABEL="${partition}${boot_part_suffix}")
 	log "Flashing boot.img to '${partition}${boot_part_suffix}'"
 
-	local boot_img_size
-	# note: using 'du' instead of get_size_of_files since the function returns
-	# KiB and lsblk returns bytes, it saves us a conversion step
-	boot_img_size="$(du -b "$work_dir/boot.img" | cut -f1))"
-
-	local boot_part_size
-	boot_part_size="$(lsblk "$boot_partition" --noheadings --bytes --output size)"
-
-	if [ "$boot_img_size" -gt "$boot_part_size" ]; then
-		log "ERROR: Unable to install new boot.img, the image size ($boot_img_size bytes) is greater than the target partition size ($boot_part_size bytes)"
-		log "If this is the first time you're seeing this error, please try switching to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
+	if ! check_image_size "$work_dir/boot.img" "$boot_partition"; then
+		log "If this is the first time you're seeing this error, please try switching"
+		log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
+		log "and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
 		exit 1
 	fi
 
@@ -897,6 +890,17 @@ flash_android_split_kernel_initfs() {
 	_kernel_path="$work_dir"/"$kernel_filename"
 	if [ "${deviceinfo_append_dtb}" = "true" ]; then
 		_kernel_path="$_kernel_path-dtb"
+	fi
+
+	if ! check_image_size "$_kernel_path" "$kernel_partition"; then
+		exit 1
+	fi
+
+	if ! check_image_size "$work_dir/$initfs_filename" "$initfs_partition"; then
+		log "If this is the first time you're seeing this error, please try switching"
+		log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
+		log "and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
+		exit 1
 	fi
 
 	log "Flashing kernel ($_kernel_path) ..."
@@ -954,9 +958,17 @@ flash_updated_depthcharge_kernel() {
 			log " to! Is kern_guid set correctly in /proc/cmdline?"
 			return 1
 		fi
+		local img
+		img="$work_dir"/"$(basename "$deviceinfo_cgpt_kpart")"
 
+		if ! check_image_size "$img" "$partition"; then
+			log "If this is the first time you're seeing this error, please try switching"
+			log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
+			log "and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
+			exit 1
+		fi
 		log "Flashing $deviceinfo_cgpt_kpart to $partition"
-		dd if="$work_dir"/"$(basename "$deviceinfo_cgpt_kpart")" of="$partition"
+		dd if="$img" of="$partition"
 	done
 
 	log "Done."
