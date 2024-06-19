@@ -375,6 +375,29 @@ append_or_copy_dtb() {
 	done
 }
 
+# Compare the given image to the given partition size. Returns true/0 if the
+# image is smaller than the partition, else returns false/1.
+# $1: image file
+# $2: partition / block device
+check_image_size() {
+	local img="$1"
+	local part="$2"
+	local img_size
+	# note: using 'du' instead of get_size_of_files since the function returns
+	# KiB and lsblk returns bytes, it saves us a conversion step
+	img_size="$(du -b "$img" | cut -f1)"
+
+	local part_size
+	part_size="$(lsblk "$part" --noheadings --bytes --output size)"
+
+	if [ "$img_size" -gt "$part_size" ]; then
+		log "ERROR: The $img size ($img_size bytes) is greater than the $part size ($part_size bytes)"
+		return 1
+	fi
+
+	return 0
+}
+
 # Add MediaTek header to kernel and/or initramfs
 add_mtk_header() {
 	local _kernel_label=""
