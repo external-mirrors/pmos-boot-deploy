@@ -23,6 +23,7 @@ deviceinfo_bootimg_override_payload_append_dtb=""
 deviceinfo_bootimg_override_initramfs=""
 deviceinfo_cgpt_kpart=""
 deviceinfo_depthcharge_board=""
+deviceinfo_depthcharge_compression=""
 deviceinfo_dtb=""
 deviceinfo_header_version=""
 deviceinfo_flash_offset_base=""
@@ -923,12 +924,21 @@ create_depthcharge_kernel_image() {
 		exit 1
 	fi
 
+	local compression
+
+	if [ -z "${deviceinfo_depthcharge_compression}" ]; then
+		compression="none"
+	else
+		compression="${deviceinfo_depthcharge_compression}"
+	fi
+
 	depthchargectl build --root none \
 		--board "$deviceinfo_depthcharge_board" \
 		--kernel "$work_dir/$kernel_filename" \
 		--kernel-cmdline "$(get_cmdline)" \
 		--initramfs "$work_dir/$initfs_filename" \
 		--fdtdir "$work_dir" \
+		--compress "$compression" \
 		--output "$work_dir/$(basename "$deviceinfo_cgpt_kpart")"
 
 	additional_files="$additional_files $(basename "$deviceinfo_cgpt_kpart")"
