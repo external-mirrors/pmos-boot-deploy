@@ -159,10 +159,38 @@ test_extlinux_config() {
 	return $_ret
 }
 
+test_check_image_size() {
+	local _ret=0
+	local img="$wdir/fake.img"
+	# 2097152 bytes
+	dd if=/dev/zero of="$img" bs=1M count=2 >/dev/null 2>&1
+
+	# Test that the check fails when the image is larger than the partition
+	# bobby tables trick to return some size and also discard the partition
+	# that is passed to this cmd by check_image_size
+	_lsblk="echo 1000000; #"
+	if check_image_size "$img" "fake_partition"; then
+		_ret=1
+		echo "test_check_image_size (img too big and expected check to fail): fail"
+	fi
+
+	# Test that check passes if image is smaller than partition
+	_lsblk="echo 99999999; #"
+	if ! check_image_size "$img" "fake_partition"; then
+		_ret=1
+		echo "test_check_image_size (img fits and expected check to pass): fail"
+	fi
+
+	[ $_ret -eq 0 ] && echo "test_check_image_size: pass"
+
+	return "$_ret"
+}
+
 test_get_size_of_files
 test_copy_files
 test_invalid_dtb
 test_extlinux_config
+test_check_image_size
 
 rm -rf "$wdir"
 trap - INT EXIT TERM

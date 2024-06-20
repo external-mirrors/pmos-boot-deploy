@@ -375,6 +375,9 @@ append_or_copy_dtb() {
 	done
 }
 
+# Allow tests to mock lsblk by defining a placeholder globally
+_lsblk="lsblk --noheadings --bytes --output size"
+
 # Compare the given image to the given partition size. Returns true/0 if the
 # image is smaller than the partition, else returns false/1.
 # $1: image file
@@ -388,7 +391,7 @@ check_image_size() {
 	img_size="$(du -b "$img" | cut -f1)"
 
 	local part_size
-	part_size="$(lsblk "$part" --noheadings --bytes --output size)"
+	part_size="$(eval "$_lsblk $part")"
 
 	if [ "$img_size" -gt "$part_size" ]; then
 		log "ERROR: The $img size ($img_size bytes) is greater than the $part size ($part_size bytes)"
