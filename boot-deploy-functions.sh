@@ -14,6 +14,7 @@ deviceinfo_bootimg_dtb_second=""
 deviceinfo_bootimg_mtk_label_kernel=""
 deviceinfo_bootimg_mtk_label_ramdisk=""
 deviceinfo_bootimg_mtk_mkimage=""
+deviceinfo_bootimg_prepend_dhtb=""
 deviceinfo_bootimg_pxa=""
 deviceinfo_bootimg_qcdt=""
 deviceinfo_bootimg_qcdt_type=""
@@ -156,6 +157,7 @@ validate_deviceinfo() {
 	for _e in \
 		deviceinfo_append_dtb \
 		deviceinfo_arch \
+		deviceinfo_bootimg_prepend_dhtb \
 		deviceinfo_bootimg_append_seandroidenforce \
 		deviceinfo_bootimg_blobpack \
 		deviceinfo_bootimg_dtb_second \
@@ -799,6 +801,13 @@ create_bootimg() {
 	if [ "${deviceinfo_bootimg_append_seandroidenforce}" = "true" ]; then
 		log_arrow "initramfs: appending 'SEANDROIDENFORCE' to boot.img"
 		printf "SEANDROIDENFORCE" >> "$_bootimg"
+	fi
+	if [ "${deviceinfo_bootimg_prepend_dhtb}" = "true" ]; then
+		printf 'DHTB' | dd of=dhtb_header bs=1 count=4 conv=notrunc
+		dd if=/dev/zero bs=1 count=508 >> dhtb_header
+		log_arrow "initramfs: prepending 'DHTB' to boot.img"
+		cat dhtb_header  $_bootimg > boot.temp
+		mv boot.temp $_bootimg
 	fi
 	additional_files="$additional_files $(basename "$_bootimg")"
 }
