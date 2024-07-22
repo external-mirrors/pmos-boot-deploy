@@ -825,6 +825,14 @@ flash_updated_boot_parts() {
 		fastboot)
 			flash_android_bootimg "${deviceinfo_flash_fastboot_partition_kernel:-boot}"
 			;;
+		fastboot-bootpart)
+			# Flash the boot image IFF not booting with EFI
+			if ! [ -e /sys/firmware/efi ]; then
+				flash_android_bootimg boot
+			else
+				echo "SKIP: booting with EFI"
+			fi
+			;;
 		heimdall-bootimg)
 			flash_android_bootimg "${deviceinfo_flash_heimdall_partition_kernel:-KERNEL}"
 			;;
