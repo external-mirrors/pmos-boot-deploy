@@ -592,6 +592,17 @@ add_systemd_boot() {
 		log "ERROR: no EFI bootloader app found for systemd or gummiboot"
 		exit 1
 	fi
+
+	local _driver
+
+	# Copy installed efi drivers into the systemd-boot specific directory.
+	for _driver in /usr/share/boot-deploy/efi-drivers/*.efi /etc/boot-deploy/efi-drivers/*.efi; do
+		[ ! -e "$_driver" ] && continue
+		local _fname
+		_fname="$(basename "$_driver")"
+		copy "$_driver" "$work_dir/$_fname"
+		additional_files="$additional_files $_fname:efi/systemd/drivers/$_fname"
+	done
 }
 
 # Android devices
