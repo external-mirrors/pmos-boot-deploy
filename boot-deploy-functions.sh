@@ -803,11 +803,11 @@ create_bootimg() {
 		printf "SEANDROIDENFORCE" >> "$_bootimg"
 	fi
 	if [ "${deviceinfo_bootimg_prepend_dhtb}" = "true" ]; then
-		printf 'DHTB' | dd of=dhtb_header bs=1 count=4 conv=notrunc
-		dd if=/dev/zero bs=1 count=508 >> dhtb_header
+		printf 'DHTB' | dd of="$work_dir/dhtb_header"
+		dd if=/dev/zero bs=508 count=1 >> "$work_dir/dhtb_header"
 		log_arrow "initramfs: prepending 'DHTB' to boot.img"
-		cat dhtb_header  $_bootimg > boot.temp
-		mv boot.temp $_bootimg
+		cat "$work_dir/dhtb_header"  $_bootimg > "$work_dir/boot.temp"
+		mv "$work_dir/boot.temp" $_bootimg
 	fi
 	additional_files="$additional_files $(basename "$_bootimg")"
 }
