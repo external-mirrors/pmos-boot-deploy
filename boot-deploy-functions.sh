@@ -7,7 +7,6 @@ set -eu
 # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
 deviceinfo_append_dtb=""
 deviceinfo_arch=""
-deviceinfo_bootimg_amazon_omap_header=""
 deviceinfo_bootimg_amazon_omap_header_size=""
 deviceinfo_bootimg_append_seandroidenforce=""
 deviceinfo_bootimg_custom_args=""
@@ -822,25 +821,20 @@ create_bootimg() {
 		cat "$work_dir/dhtb_header"  $_bootimg > "$work_dir/boot.temp"
 		mv "$work_dir/boot.temp" $_bootimg
 	fi
-	if [ "${deviceinfo_bootimg_amazon_omap_header}" = "true" ]; then
-		if [ -z "${deviceinfo_bootimg_amazon_omap_header_size}" ]; then
-			log "ERROR: deviceinfo_bootimg_amazon_omap_header is set,"
-			log "but 'deviceinfo_bootimg_amazon_header_size' is missing."
-			log "Please set the certificate header size used by the device."
-			log "See also: <https://postmarketos.org/deviceinfo>"
-			exit 1
-		fi
+	if [ -n "${deviceinfo_bootimg_amazon_omap_header_size}" ]; then
 		log_arrow "initramfs: prepending Amazon OMAP signature exploit to boot.img"
-		# cert struct start offset and length, used to stack smash cert verification.
-		# returns to address placed in system partition by the cyanogen install,
-		# which jumps to the 2nd stage u-boot at the top of the boot partition.
+		# Header data sourced from soho exploit.mk
+		# https://github.com/TeamWin/android_device_amazon_soho/blob/cm-12.0/exploit.mk#L6
 		local _header_data='\x50\x03\x00\x00\x00\x25\xE4\x00'
-		local _header_size="${deviceinfo_bootimg_amazon_omap_header_size}"
 		local _header_offset=$((0x34))
 		local _tmp_file="${work_dir}/boot.temp"
-		dd if=/dev/zero bs="${_header_size}" count=1 status=none > "${_tmp_file}"
+		# Create blank header
+		dd if=/dev/zero bs="${deviceinfo_bootimg_amazon_omap_header_size}" count=1 \
+			status=none > "${_tmp_file}"
+		# Insert header string in the right place
 		printf "%b" "${_header_data}" |
 			dd of="${_tmp_file}" bs="${_header_offset}" seek=1 conv=notrunc status=none
+		# Attach header to bootimg
 		cat "${_bootimg}" >> "${_tmp_file}"
 		mv "${_tmp_file}" "${_bootimg}"
 	fi
