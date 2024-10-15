@@ -890,7 +890,7 @@ flash_android_bootimg() {
 	if ! check_image_size "$work_dir/boot.img" "$boot_partition"; then
 		log "If this is the first time you're seeing this error, please try switching"
 		log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
-		log "and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
+		log "and comment on https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/5000"
 		exit 1
 	fi
 
@@ -928,7 +928,7 @@ flash_android_split_kernel_initfs() {
 	if ! check_image_size "$work_dir/$initfs_filename" "$initfs_partition"; then
 		log "If this is the first time you're seeing this error, please try switching"
 		log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
-		log "and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
+		log "and comment on https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/5000"
 		exit 1
 	fi
 
@@ -1002,7 +1002,7 @@ flash_updated_depthcharge_kernel() {
 		if ! check_image_size "$img" "$partition"; then
 			log "If this is the first time you're seeing this error, please try switching"
 			log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
-			log "and comment on https://gitlab.com/postmarketOS/pmaports/-/merge_requests/5000"
+			log "and comment on https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/5000"
 			exit 1
 		fi
 		log "Flashing $deviceinfo_cgpt_kpart to $partition"
