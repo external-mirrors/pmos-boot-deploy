@@ -92,7 +92,7 @@ pmbootstrap install --no-image --password 1
 # Replace the installed boot-deploy with the local copy
 echo "==> Installing boot-deploy to device chroot"
 # we use a wrapper script to install it as boot-deploy.real
-sudo cp boot-deploy "$rootfs"/sbin/boot-deploy.real
+sudo cp boot-deploy "$rootfs"/usr/bin/boot-deploy.real
 sudo cp boot-deploy-functions.sh "$rootfs"/usr/share/boot-deploy/boot-deploy-functions.sh
 
 echo "==> Installing boot-deploy wrapper"
@@ -146,10 +146,10 @@ echo "work_dir=\$work_dir.copy" >> "/tmp/boot-deploy.args"
 echo "output_dir=\$output_dir" >> "/tmp/boot-deploy.args"
 echo "local_deviceinfo=\$local_deviceinfo" >> "/tmp/boot-deploy.args"
 
-exec /sbin/boot-deploy.real \$orig_args
+exec /usr/bin/boot-deploy.real \$orig_args
 EOF
 chmod +x "boot-deploy-wrapper"
-sudo mv "boot-deploy-wrapper" "$rootfs/sbin/boot-deploy"
+sudo mv "boot-deploy-wrapper" "$rootfs/usr/bin/boot-deploy"
 
 echo "==> Running boot-deploy in chroot"
 pmbootstrap chroot -r mkinitfs
