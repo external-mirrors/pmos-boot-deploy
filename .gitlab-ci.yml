@@ -21,7 +21,10 @@ integration test:
   before_script:
     - apk add curl android-tools file
     - apk add --allow-untrusted -X http://mirror.postmarketos.org/postmarketos/master/ mkbootimg-osm0sis
-    - curl -fsSL "https://gitlab.postmarketos.org/postmarketOS/ci-common/-/raw/master/install_pmbootstrap.sh" | sh
+    # Force IPv4 for gitlab.postmarketos.org until it supports IPv6 too, OSUOSL is
+    # working on it (infra#195)
+    - "echo '140.211.167.182 gitlab.postmarketos.org' >> /etc/hosts"
+    - curl -4fsSL "https://gitlab.postmarketos.org/postmarketOS/ci-common/-/raw/master/install_pmbootstrap.sh" | sh
     - su pmos -c "pmbootstrap config device ${DEVICE}"
     - su pmos -c "pmbootstrap config ui none"
   script:
