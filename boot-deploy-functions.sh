@@ -56,6 +56,8 @@ distro_prefix=""
 # getopts / get_options set the following 'global' variables:
 kernel_filename=
 initfs_filename=
+kernel_version=
+kver_suffix=
 work_dir=
 output_dir="/boot"
 additional_files=
@@ -75,13 +77,15 @@ Where:
 }
 
 get_options() {
-	while getopts k:i:d:o:c: opt
+	while getopts k:i:d:o:c:v: opt
 	do
 		case $opt in
 			k)
 				kernel_filename="$OPTARG";;
 			i)
 				initfs_filename="$OPTARG";;
+			v)
+				kernel_version="$OPTARG";;
 			d)
 				work_dir="$OPTARG";;
 			o)
@@ -112,6 +116,10 @@ get_options() {
 	if [ ! -d "$work_dir" ]; then
 		log "Input directory does not exist: $output_dir"
 		exit 1
+	fi
+
+	if [ -n "$kernel_version" ]; then
+		kver_suffix="-$kernel_version"
 	fi
 
 	for f in "$kernel_filename" "$initfs_filename" $additional_files; do
@@ -331,6 +339,11 @@ copy_files() {
 		echo "==> Installing: $_dest"
 		copy "$_src" "$_dest"
 	done
+
+	if [ -f "$output_dir"/loader/entries/"${distro_prefix}".conf ]; then
+		echo "==> Removing old loader entry: ${distro_prefix}.conf"
+		rm "$output_dir"/loader/entries/"${distro_prefix}".conf
+	fi
 }
 
 # Append the correct device tree to the linux image file or copy the dtb to the boot partition
@@ -522,6 +535,7 @@ create_uboot_fit_image() {
 generate_bootloader_spec_conf() {
 	local _dtb=""
 	local _kernel_filename="$kernel_filename"
+	local _conf="${distro_prefix}${kver_suffix}.conf"
 	if [ -n "${deviceinfo_dtb}" ]; then
 		_dtb="$(find_dtb "$deviceinfo_dtb")"
 	fi
@@ -545,17 +559,22 @@ generate_bootloader_spec_conf() {
 	# 	https://www.kernel.org/doc/html/next/x86/microcode.html
 	# 	- TODO: need to guarantee that distro_prefix is always going to be
 	# 	compliant with the BLS!
-	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
-		title	$distro_name
+	local _version=""
+	if [ -n "$kernel_version" ]; then
+		_version="version	$kernel_version"
+	fi
+	cat <<-EOF > "$work_dir/$_conf"
+		title	${distro_name}
 		sort-key $distro_name
 		linux	$_kernel_filename
+		$_version
 		$(printf "%s" "$(list_ucode $output_dir)" | sed 's|^|initrd\t|')
 		initrd	$initfs_filename
 		options $(get_cmdline)
 		$_dtb_line
 	EOF
 
-	additional_files="$additional_files ${distro_prefix}.conf:loader/entries/${distro_prefix}.conf"
+	additional_files="$additional_files $_conf:loader/entries/$_conf"
 }
 
 # Add support for systemd-boot (and/or gummiboot) by generating necessary
