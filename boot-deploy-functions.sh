@@ -888,9 +888,7 @@ flash_android_bootimg() {
 	log "Flashing boot.img to '${partition}${boot_part_suffix}'"
 
 	if ! check_image_size "$work_dir/boot.img" "$boot_partition"; then
-		log "If this is the first time you're seeing this error, please try switching"
-		log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
-		log "and comment on https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/5000"
+		log_boot_partition_too_small_suggestion
 		exit 1
 	fi
 
@@ -926,9 +924,7 @@ flash_android_split_kernel_initfs() {
 	fi
 
 	if ! check_image_size "$work_dir/$initfs_filename" "$initfs_partition"; then
-		log "If this is the first time you're seeing this error, please try switching"
-		log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
-		log "and comment on https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/5000"
+		log_boot_partition_too_small_suggestion
 		exit 1
 	fi
 
@@ -1000,9 +996,7 @@ flash_updated_depthcharge_kernel() {
 		img="$work_dir"/"$(basename "$deviceinfo_cgpt_kpart")"
 
 		if ! check_image_size "$img" "$partition"; then
-			log "If this is the first time you're seeing this error, please try switching"
-			log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
-			log "and comment on https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/5000"
+			log_boot_partition_too_small_suggestion
 			exit 1
 		fi
 		log "Flashing $deviceinfo_cgpt_kpart to $partition"
@@ -1289,6 +1283,13 @@ find_all_dtbs() {
 	done
 
 	echo "$_dtbs"
+}
+
+# Prints a suggestion on how to maybe fix the boot partition too small problem.
+log_boot_partition_too_small_suggestion() {
+	log "If this is the first time you're seeing this error, please try switching"
+	log "to the minimal initramfs with 'apk add postmarketos-initramfs-minimal' "
+	log "and comment on https://gitlab.postmarketos.org/postmarketOS/pmaports/-/merge_requests/5000"
 }
 
 # $1: Message to log. Will be prefixed by an arrow.
