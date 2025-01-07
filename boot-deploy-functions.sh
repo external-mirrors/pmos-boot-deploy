@@ -14,7 +14,6 @@ deviceinfo_bootimg_blobpack=""
 deviceinfo_bootimg_dtb_second=""
 deviceinfo_bootimg_mtk_label_kernel=""
 deviceinfo_bootimg_mtk_label_ramdisk=""
-deviceinfo_bootimg_mtk_mkimage=""
 deviceinfo_bootimg_prepend_dhtb=""
 deviceinfo_bootimg_pxa=""
 deviceinfo_bootimg_qcdt=""
@@ -162,7 +161,6 @@ validate_deviceinfo() {
 		deviceinfo_bootimg_append_seandroidenforce \
 		deviceinfo_bootimg_blobpack \
 		deviceinfo_bootimg_dtb_second \
-		deviceinfo_bootimg_mtk_mkimage \
 		deviceinfo_bootimg_override_payload_compression \
 		deviceinfo_bootimg_pxa \
 		deviceinfo_bootimg_qcdt \
@@ -412,13 +410,6 @@ add_mtk_header() {
 	fi
 	if [ -n "${deviceinfo_bootimg_mtk_label_ramdisk}" ]; then
 		_ramdisk_label=$deviceinfo_bootimg_mtk_label_ramdisk
-	fi
-
-	if [ "${deviceinfo_bootimg_mtk_mkimage}" = "true" ]; then
-		log "WARNING: bootimg_mtk_mkimage is deprecated and will be removed in the future."
-		log "Please use bootimg_mtk_label_kernel and bootimg_mtk_label_ramdisk instead."
-		_kernel_label="KERNEL"
-		_ramdisk_label="ROOTFS"
 	fi
 
 	if [ -n "${_kernel_label}" ] || [ -n "${_ramdisk_label}" ]; then
