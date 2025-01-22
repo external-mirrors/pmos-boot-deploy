@@ -7,6 +7,7 @@ set -eu
 # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
 deviceinfo_append_dtb=""
 deviceinfo_arch=""
+deviceinfo_bootimg_amazon_omap_header_size=""
 deviceinfo_bootimg_append_seandroidenforce=""
 deviceinfo_bootimg_custom_args=""
 deviceinfo_bootimg_blobpack=""
@@ -819,6 +820,23 @@ create_bootimg() {
 		log_arrow "initramfs: prepending 'DHTB' to boot.img"
 		cat "$work_dir/dhtb_header"  $_bootimg > "$work_dir/boot.temp"
 		mv "$work_dir/boot.temp" $_bootimg
+	fi
+	if [ -n "${deviceinfo_bootimg_amazon_omap_header_size}" ]; then
+		log_arrow "initramfs: prepending Amazon OMAP signature exploit to boot.img"
+		# Header data sourced from soho exploit.mk
+		# https://github.com/TeamWin/android_device_amazon_soho/blob/cm-12.0/exploit.mk#L6
+		local _header_data='\x50\x03\x00\x00\x00\x25\xE4\x00'
+		local _header_offset=$((0x34))
+		local _tmp_file="${work_dir}/boot.temp"
+		# Create blank header
+		dd if=/dev/zero bs="${deviceinfo_bootimg_amazon_omap_header_size}" count=1 \
+			status=none > "${_tmp_file}"
+		# Insert header string in the right place
+		printf "%b" "${_header_data}" |
+			dd of="${_tmp_file}" bs="${_header_offset}" seek=1 conv=notrunc status=none
+		# Attach header to bootimg
+		cat "${_bootimg}" >> "${_tmp_file}"
+		mv "${_tmp_file}" "${_bootimg}"
 	fi
 	additional_files="$additional_files $(basename "$_bootimg")"
 }
