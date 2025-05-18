@@ -26,6 +26,7 @@ deviceinfo_cgpt_kpart=""
 deviceinfo_depthcharge_board=""
 deviceinfo_depthcharge_compression=""
 deviceinfo_dtb=""
+deviceinfo_dtb_overlays=""
 deviceinfo_header_version=""
 deviceinfo_flash_offset_base=""
 deviceinfo_flash_offset_dtb=""
@@ -1033,6 +1034,15 @@ create_extlinux_config() {
 		_fdt_line="fdtdir /"
 	fi
 
+	local _fdtoverlays_line=""
+	if [ -n "${deviceinfo_dtb_overlays}" ]; then
+		_fdtoverlays_line="fdtoverlays"
+		# There may be multiple overlays, prepend "/" in front of each one
+		for ovl in "${deviceinfo_dtb_overlays}"; do
+			_fdtoverlays_line="$_fdtoverlays_line /$ovl"
+		done
+	fi
+
 	local _cmdline_line=""
 	if [ ! "$(get_cmdline)" = " " ]; then
 		_cmdline_line="append $(get_cmdline)"
@@ -1046,6 +1056,7 @@ menu title boot prev kernel
 label $distro_name
 	kernel /$kernel_filename
 	$_fdt_line
+	$_fdtoverlays_line
 	initrd /$initfs_filename
 	$_cmdline_line
 EOF
