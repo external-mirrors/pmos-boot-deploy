@@ -35,6 +35,7 @@ deviceinfo_flash_offset_second=""
 deviceinfo_flash_offset_tags=""
 deviceinfo_flash_pagesize=""
 deviceinfo_generate_bootimg=""
+deviceinfo_generate_cmdline_txt=""
 deviceinfo_generate_depthcharge_image=""
 deviceinfo_generate_extlinux_config=""
 deviceinfo_generate_grub_config=""
@@ -1080,6 +1081,19 @@ menuentry "$distro_name" {
 EOF
 
 	additional_files="$additional_files grub.cfg:/grub/grub.cfg"
+}
+
+create_cmdline_txt() {
+	# Raspberry pi and clones parses /boot/cmdline.txt to get
+	# cmdline variables. Put our cmdline into the file.
+
+	[ "${deviceinfo_generate_cmdline_txt}" = "true" ] || return 0
+
+	log_arrow "Generating cmdline.txt"
+
+	get_cmdline > "$work_dir/cmdline.txt"
+
+	additional_files="$additional_files cmdline.txt"
 }
 
 # $@: list of files to get total size of, in kilobytes
