@@ -1,11 +1,19 @@
----
-
-# global settings
 image: alpine:latest
+
+variables:
+  CI_TRON_TEMPLATE_PROJECT: &ci-tron-template-project postmarketOS/ci-common
+  CI_TRON_JOB_TEMPLATE_PROJECT_URL: $CI_SERVER_URL/$CI_TRON_TEMPLATE_PROJECT
+  CI_TRON_JOB_TEMPLATE_COMMIT: &ci-tron-template-commit 7c95b5f2d53533e8722abf57c73e558168e811f3
+
+include:
+  - project: *ci-tron-template-project
+    ref: *ci-tron-template-commit
+    file: '/ci-tron/common.yml'
 
 stages:
   - unit tests
   - integration tests
+  - hardware tests
 
 workflow:
   rules:
@@ -63,3 +71,33 @@ integration test:
       - DEVICE: pine64-pinebookpro
       # sd-boot + CPU microcode config
       - DEVICE: generic-x86_64
+
+build-ci-tron-qemu-amd64:
+  stage: hardware tests
+  extends:
+    - .pmos-ci-tron-build-boot-artifacts
+  variables:
+    DEVICE_NAME: qemu-amd64
+    KERNEL_VARIANT: lts
+    INSTALL_PACKAGES: device-${DEVICE_NAME} device-${DEVICE_NAME}-kernel-${KERNEL_VARIANT} postmarketos-mkinitfs-hook-ci
+  before_script:
+    - mkdir -p rootfs/usr/bin
+    - cp boot-deploy rootfs/usr/bin
+    - mkdir -p rootfs/usr/share/boot-deploy
+    - cp boot-deploy-functions.sh rootfs/usr/share/boot-deploy
+
+test-ci-tron-qemu-amd64:
+  stage: hardware tests
+  extends:
+    - .pmos-ci-tron-initramfs-test
+    - .pmos-ci-tron-runner-qemu-amd64
+  dependencies: []
+  needs:
+    - job: 'build-ci-tron-qemu-amd64'
+      artifacts: false
+  variables:
+    CI_TRON_KERNEL__URL: "glartifact://build-ci-tron-qemu-amd64/${CI_TRON__PMB_EXPORT_PATH}/vmlinuz-${KERNEL_VARIANT}"
+    CI_TRON_INITRAMFS__INITRAMFS__URL: "glartifact://build-ci-tron-qemu-amd64/${CI_TRON__PMB_EXPORT_PATH}/initramfs"
+    CI_TRON_KERNEL_CMDLINE__DEVICEINFO: 'console=tty1 console=ttyS0,115200 PMOS_FORCE_PARTITION_RESIZE'
+    DEVICE_NAME: qemu-amd64
+    KERNEL_VARIANT: lts
