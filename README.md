@@ -34,6 +34,13 @@ distro_prefix="pmos"
 crypttab_entry="root"
 ```
 
+Additionally, the following optional variables are supported:
+
+```
+bootimg_filename="boot.img"
+```
+
+
 ## Usage
 
 ```

@@ -53,6 +53,7 @@ deviceinfo_flash_kernel_on_update=""
 crypttab_entry=""
 distro_name=""
 distro_prefix=""
+bootimg_filename="boot.img"
 
 # getopts / get_options set the following 'global' variables:
 kernel_filename=
@@ -233,6 +234,10 @@ source_boot_deploy_config() {
 	fi
 	if [ -z "$distro_prefix" ]; then
 		log "ERROR: distro_prefix from $_file is not set"
+		exit 1
+	fi
+	if [ -z "$bootimg_filename" ]; then
+		log "ERROR: bootimg_filename from $_file is empty"
 		exit 1
 	fi
 }
@@ -602,7 +607,7 @@ add_systemd_boot() {
 create_bootimg() {
 	[ "${deviceinfo_generate_bootimg}" = "true" ] || return 0
 	# shellcheck disable=SC3060
-	local _bootimg="$work_dir/boot.img"
+	local _bootimg="$work_dir/$bootimg_filename"
 	local _vendor_bootimg="$work_dir/vendor_boot.img"
 
 	local _mkbootimg
@@ -617,7 +622,7 @@ create_bootimg() {
 		_mkbootimg=mkbootimg
 	fi
 
-	log_arrow "initramfs: creating boot.img"
+	log_arrow "initramfs: creating $bootimg_filename"
 	local _base="${deviceinfo_flash_offset_base}"
 	[ -z "$_base" ] && _base="0x10000000"
 
@@ -724,7 +729,7 @@ create_bootimg() {
 			if ! [ -e "$_dt_img" ]; then
 				log "ERROR: File not found: $_dt_img, but"
 				log "'deviceinfo_bootimg_qcdt' is set. Please verify that your"
-				log "device is a QCDT device by analyzing the boot.img file"
+				log "device is a QCDT device by analyzing an android boot.img file"
 				log "(e.g. 'pmbootstrap bootimg_analyze path/to/twrp.img')"
 				log "and based on that, set the deviceinfo variable to false or"
 				log "adjust your linux APKBUILD to properly generate the dt.img"
@@ -828,18 +833,18 @@ create_bootimg() {
 		copy "${_bootimg}.blob" "$_bootimg"
 	fi
 	if [ "${deviceinfo_bootimg_append_seandroidenforce}" = "true" ]; then
-		log_arrow "initramfs: appending 'SEANDROIDENFORCE' to boot.img"
+		log_arrow "initramfs: appending 'SEANDROIDENFORCE' to $bootimg_filename"
 		printf "SEANDROIDENFORCE" >> "$_bootimg"
 	fi
 	if [ "${deviceinfo_bootimg_prepend_dhtb}" = "true" ]; then
 		printf 'DHTB' | dd of="$work_dir/dhtb_header"
 		dd if=/dev/zero bs=508 count=1 >> "$work_dir/dhtb_header"
-		log_arrow "initramfs: prepending 'DHTB' to boot.img"
+		log_arrow "initramfs: prepending 'DHTB' to $bootimg_filename"
 		cat "$work_dir/dhtb_header"  $_bootimg > "$work_dir/boot.temp"
 		mv "$work_dir/boot.temp" $_bootimg
 	fi
 	if [ -n "${deviceinfo_bootimg_amazon_omap_header_size}" ]; then
-		log_arrow "initramfs: prepending Amazon OMAP signature exploit to boot.img"
+		log_arrow "initramfs: prepending Amazon OMAP signature exploit to $bootimg_filename"
 		# Header data sourced from soho exploit.mk
 		# https://github.com/TeamWin/android_device_amazon_soho/blob/cm-12.0/exploit.mk#L6
 		local _header_data='\x50\x03\x00\x00\x00\x25\xE4\x00'
@@ -924,14 +929,14 @@ vendor_flash_android_bootimg() {
 	local vendor_boot_partition
 	boot_part_suffix=$(ab_get_slot) # Empty for non-A/B devices
 	boot_partition=$(findfs PARTLABEL="${partlabel}${boot_part_suffix}")
-	log "Flashing boot.img to '${partlabel}${boot_part_suffix}'"
+	log "Flashing $bootimg_filename to '${partlabel}${boot_part_suffix}'"
 
-	if ! check_image_size "$work_dir/boot.img" "$boot_partition"; then
+	if ! check_image_size "$work_dir/$bootimg_filename" "$boot_partition"; then
 		log_boot_partition_too_small_suggestion
 		exit 1
 	fi
 
-	dd if="$work_dir/boot.img" of="$boot_partition" bs=1M
+	dd if="$work_dir/$bootimg_filename" of="$boot_partition" bs=1M
 
 	if { [ "$deviceinfo_header_version" = "3" ] || [ "$deviceinfo_header_version" = "4" ]; } && [ -e "$work_dir/vendor_boot.img" ]; then
 		if ! check_image_size "$work_dir/vendor_boot.img" "$vendor_boot_partition"; then
