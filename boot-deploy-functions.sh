@@ -603,6 +603,7 @@ create_bootimg() {
 	[ "${deviceinfo_generate_bootimg}" = "true" ] || return 0
 	# shellcheck disable=SC3060
 	local _bootimg="$work_dir/boot.img"
+	local _vendor_bootimg="$work_dir/vendor_boot.img"
 
 	local _mkbootimg
 	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
@@ -756,7 +757,7 @@ create_bootimg() {
 			log "ERROR: Couldn't find DTB for ${deviceinfo_dtb}"
 			exit 1
 		fi
-		_header_v2="--header_version 2 --dtb_offset $deviceinfo_flash_offset_dtb --dtb $_dtb"
+		_header_v2="--dtb_offset $deviceinfo_flash_offset_dtb --dtb $_dtb"
 	fi
 
 	local _ramdisk="$work_dir/$initfs_filename"
@@ -770,22 +771,46 @@ create_bootimg() {
 			exit 1
 		fi
 	fi
-	# shellcheck disable=SC2039 disable=SC2086
-	"${_mkbootimg}" \
-		--kernel "${_kernelfile}" \
-		--ramdisk "$_ramdisk" \
-		--base "${_base}" \
-		--second_offset "${deviceinfo_flash_offset_second}" \
-		--cmdline "$(get_cmdline)" \
-		--kernel_offset "${deviceinfo_flash_offset_kernel}" \
-		--ramdisk_offset "${deviceinfo_flash_offset_ramdisk}" \
-		--tags_offset "${deviceinfo_flash_offset_tags}" \
-		--pagesize "${deviceinfo_flash_pagesize}" \
-		${_second} \
-		${_dt_img} \
-		${_header_v2} \
-		${deviceinfo_bootimg_custom_args} \
-		-o "$_bootimg" || exit 1
+
+	# FIXME: mkbootimg in android-tools has major syntax and behavioural differences.
+	# One example being --*_offset () with empty parameters will error.
+	# A rewrite of this script and/or the deprecation of dated mkbootimg forks should be considered.
+	# For now we invocate modern mkbootimg differently for header version 4.
+	if [ "$deviceinfo_header_version" = "3" ] || [ "$deviceinfo_header_version" = "4" ]; then
+		require_package "mkbootimg" "android-tools" "generate_bootimg"
+
+		# shellcheck disable=SC2039 disable=SC2086
+		mkbootimg \
+			--header_version "${deviceinfo_header_version}" \
+			--dtb ${_dtb} \
+			--kernel "${_kernelfile}" \
+			--vendor_ramdisk "$_ramdisk" \
+			--vendor_cmdline "$(get_cmdline)" \
+			--pagesize "${deviceinfo_flash_pagesize}" \
+			${deviceinfo_bootimg_custom_args} \
+			--vendor_boot "$_vendor_bootimg" \
+			-o "$_bootimg" || exit 1
+
+		additional_files="$additional_files $(basename $_vendor_bootimg)"
+	else
+		# shellcheck disable=SC2039 disable=SC2086
+		"${_mkbootimg}" \
+			--header_version "${deviceinfo_header_version}" \
+			--kernel "${_kernelfile}" \
+			--ramdisk "$_ramdisk" \
+			--base "${_base}" \
+			--second_offset "${deviceinfo_flash_offset_second}" \
+			--cmdline "$(get_cmdline)" \
+			--kernel_offset "${deviceinfo_flash_offset_kernel}" \
+			--ramdisk_offset "${deviceinfo_flash_offset_ramdisk}" \
+			--tags_offset "${deviceinfo_flash_offset_tags}" \
+			--pagesize "${deviceinfo_flash_pagesize}" \
+			${_second} \
+			${_dt_img} \
+			${_header_v2} \
+			${deviceinfo_bootimg_custom_args} \
+			-o "$_bootimg" || exit 1
+	fi
 	# shellcheck disable=SC3060
 	if [ "${deviceinfo_mkinitfs_postprocess}" != "" ]; then
 		sh "${deviceinfo_mkinitfs_postprocess}" "$work_dir/$initfs_filename"
@@ -853,18 +878,19 @@ flash_updated_boot_parts() {
 	local method="${deviceinfo_flash_method:?}"
 	case $method in
 		fastboot)
-			flash_android_bootimg "${deviceinfo_flash_fastboot_partition_kernel:-boot}"
+			flash_android_bootimg "${deviceinfo_flash_fastboot_partition_kernel:-boot}" "${deviceinfo_flash_fastboot_partition_kernel:-vendor_boot}"
 			;;
 		fastboot-bootpart)
 			# Flash the boot image IFF not booting with EFI
 			if ! [ -e /sys/firmware/efi ]; then
-				flash_android_bootimg boot
+				flash_android_bootimg boot vendor_boot
 			else
 				echo "SKIP: booting with EFI"
 			fi
 			;;
 		heimdall-bootimg)
-			flash_android_bootimg "${deviceinfo_flash_heimdall_partition_kernel:-KERNEL}"
+			# TODO: check if there is a different default name for vendor_boot
+			flash_android_bootimg "${deviceinfo_flash_heimdall_partition_kernel:-KERNEL}" "${deviceinfo_flash_heimdall_partition_vendor_boot:-vendor_boot}"
 			;;
 		heimdall-isorec)
 			flash_android_split_kernel_initfs
@@ -888,14 +914,17 @@ ab_get_slot() {
 	echo "$ab_slot_suffix"
 }
 
-# $1: partition to flash from deviceinfo
-flash_android_bootimg() {
-	local partition="$1"
+# $1: boot/kernel partition to flash from deviceinfo
+# $2: vendor_boot partition to flash from deviceinfo
+vendor_flash_android_bootimg() {
+	local partlabel="$1"
+	local vendor_partlabel="$2"
 	local boot_part_suffix
 	local boot_partition
+	local vendor_boot_partition
 	boot_part_suffix=$(ab_get_slot) # Empty for non-A/B devices
-	boot_partition=$(findfs PARTLABEL="${partition}${boot_part_suffix}")
-	log "Flashing boot.img to '${partition}${boot_part_suffix}'"
+	boot_partition=$(findfs PARTLABEL="${partlabel}${boot_part_suffix}")
+	log "Flashing boot.img to '${partlabel}${boot_part_suffix}'"
 
 	if ! check_image_size "$work_dir/boot.img" "$boot_partition"; then
 		log_boot_partition_too_small_suggestion
@@ -903,6 +932,16 @@ flash_android_bootimg() {
 	fi
 
 	dd if="$work_dir/boot.img" of="$boot_partition" bs=1M
+
+	if { [ "$deviceinfo_header_version" = "3" ] || [ "$deviceinfo_header_version" = "4" ]; } && [ -e "$work_dir/vendor_boot.img" ]; then
+		if ! check_image_size "$work_dir/vendor_boot.img" "$vendor_boot_partition"; then
+			log_boot_partition_too_small_suggestion
+			exit 1
+		fi
+		vendor_boot_partition=$(findfs PARTLABEL="${vendor_partlabel}${boot_part_suffix}")
+		log "Flashing vendor_boot.img to '${vendor_partlabel}${boot_part_suffix}'"
+		dd if="$work_dir/vendor_boot.img" of="$vendor_boot_partition" bs=1M
+	fi
 }
 
 flash_android_split_kernel_initfs() {
