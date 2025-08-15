@@ -20,5 +20,5 @@ sh_files="
 
 for file in $sh_files; do
 	echo "shellcheck: $file"
-	shellcheck -e SC1008 -e SC3043 -x "$file"
+	shellcheck -x "$file"
 done
