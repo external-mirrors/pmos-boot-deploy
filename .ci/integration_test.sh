@@ -86,6 +86,10 @@ assert_equal() {
 	echo "    ✅ $1 == $2"
 }
 
+# Building packages takes long and isn't relevant to these integration tests, so
+# let's not do it. It also causes test failures, unsure why.
+pmbootstrap config build_pkgs_on_install False
+
 echo "==> Building a pmOS rootfs for $device"
 # Now do a full install, running boot-deploy in a real environment
 pmbootstrap install --no-image --password 1 || printf \
