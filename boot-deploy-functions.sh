@@ -883,19 +883,19 @@ flash_updated_boot_parts() {
 	local method="${deviceinfo_flash_method:?}"
 	case $method in
 		fastboot)
-			flash_android_bootimg "${deviceinfo_flash_fastboot_partition_kernel:-boot}" "${deviceinfo_flash_fastboot_partition_kernel:-vendor_boot}"
+			vendor_flash_android_bootimg "${deviceinfo_flash_fastboot_partition_kernel:-boot}" "${deviceinfo_flash_fastboot_partition_kernel:-vendor_boot}"
 			;;
 		fastboot-bootpart)
 			# Flash the boot image IFF not booting with EFI
 			if ! [ -e /sys/firmware/efi ]; then
-				flash_android_bootimg boot vendor_boot
+				vendor_flash_android_bootimg boot vendor_boot
 			else
 				echo "SKIP: booting with EFI"
 			fi
 			;;
 		heimdall-bootimg)
 			# TODO: check if there is a different default name for vendor_boot
-			flash_android_bootimg "${deviceinfo_flash_heimdall_partition_kernel:-KERNEL}" "${deviceinfo_flash_heimdall_partition_vendor_boot:-vendor_boot}"
+			vendor_flash_android_bootimg "${deviceinfo_flash_heimdall_partition_kernel:-KERNEL}" "${deviceinfo_flash_heimdall_partition_vendor_boot:-vendor_boot}"
 			;;
 		heimdall-isorec)
 			flash_android_split_kernel_initfs
