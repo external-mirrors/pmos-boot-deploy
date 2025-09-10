@@ -178,9 +178,7 @@ echo "    📝 output_dir: $output_dir"
 . "$rootfs/usr/share/boot-deploy/os-customization"
 
 # shellcheck disable=SC1091
-. "$rootfs/usr/share/deviceinfo/deviceinfo"
-# shellcheck disable=SC1091
-. "$rootfs/etc/deviceinfo"
+SOURCE_DEVICEINFO_ROOT="$rootfs" . "$rootfs/usr/share/misc/source_deviceinfo"
 
 if [ "$output_dir" != "/boot" ]; then
 	echo "WARN: output_dir is not /boot, this is weird: $output_dir"
