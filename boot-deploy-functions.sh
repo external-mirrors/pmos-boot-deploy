@@ -798,9 +798,15 @@ create_bootimg() {
 
 		additional_files="$additional_files $(basename $_vendor_bootimg)"
 	else
+		local _header_version_arg="--header_version ${deviceinfo_header_version}"
+		# don't add --header_version if deviceinfo_header_version is empty
+		if [ -z "${deviceinfo_header_version}" ]; then
+			_header_version_arg=""
+		fi
+
 		# shellcheck disable=SC2039 disable=SC2086
 		"${_mkbootimg}" \
-			--header_version "${deviceinfo_header_version}" \
+			${_header_version_arg} \
 			--kernel "${_kernelfile}" \
 			--ramdisk "$_ramdisk" \
 			--base "${_base}" \
