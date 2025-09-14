@@ -34,7 +34,7 @@ integration test:
   stage: integration tests
   before_script:
     - apk add curl android-tools file
-    - apk add --allow-untrusted -X http://mirror.postmarketos.org/postmarketos/master/ mkbootimg-osm0sis
+    - apk add --allow-untrusted -X http://mirror.postmarketos.org/postmarketos/master/ mkbootimg-osm0sis pxa-mkbootimg
     # Force IPv4 for gitlab.postmarketos.org until it supports IPv6 too, OSUOSL is
     # working on it (infra#195)
     - "echo '140.211.167.182 gitlab.postmarketos.org' >> /etc/hosts"
@@ -65,6 +65,8 @@ integration test:
       - DEVICE: lenovo-21bx
       # Another standard Android device, but an msm8916 one
       - DEVICE: samsung-a5
+      # Another Android device, but using pxa-mkbootimg
+      - DEVICE: samsung-coreprimevelte
       # Android device with a boot.img containing an exynos QCDT image
       - DEVICE: samsung-on7xelte
       # extlinux

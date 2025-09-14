@@ -15,6 +15,7 @@ output_dir=""
 distro_prefix=""
 
 # deviceinfo variables we use (declared to make shellcheck happy)
+deviceinfo_bootimg_pxa=""
 deviceinfo_generate_extlinux_config=""
 deviceinfo_generate_bootimg=""
 deviceinfo_generate_systemd_boot=""
@@ -87,7 +88,8 @@ assert_equal() {
 
 echo "==> Building a pmOS rootfs for $device"
 # Now do a full install, running boot-deploy in a real environment
-pmbootstrap install --no-image --password 1
+pmbootstrap install --no-image --password 1 || printf \
+	"==> The step above might fail because 'pmbootstrap install' runs mkinitfs with old boot-deploy.\n    Just continue and install new one, then retry mkinitfs later.\n"
 
 # Replace the installed boot-deploy with the local copy
 echo "==> Installing boot-deploy to device chroot"
@@ -208,6 +210,13 @@ validate_bootimg() {
 	fi
 
 	assert_exists "$boot_dir/boot.img"
+
+	# Due to how pxa-mkbootimg works, we can't test more here.
+	# There is pxa-unpackbootimg, but it outputs different set of files
+	#   compared to regular unpackbootimg.
+	if [ "${deviceinfo_bootimg_pxa}" = "true" ]; then
+		return
+	fi
 
 	mkdir bootimg_extract
 	unpackbootimg \
