@@ -787,7 +787,7 @@ create_bootimg() {
 		# shellcheck disable=SC2039 disable=SC2086
 		mkbootimg \
 			--header_version "${deviceinfo_header_version}" \
-			--dtb ${_dtb} \
+			--dtb "${_dtb}" \
 			--kernel "${_kernelfile}" \
 			--vendor_ramdisk "$_ramdisk" \
 			--vendor_cmdline "$(get_cmdline)" \
