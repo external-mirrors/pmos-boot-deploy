@@ -23,6 +23,7 @@ deviceinfo_bootimg_override_payload_compression=""
 deviceinfo_bootimg_override_payload_append_dtb=""
 deviceinfo_bootimg_override_initramfs=""
 deviceinfo_cgpt_kpart=""
+deviceinfo_create_prep_boot=""
 deviceinfo_depthcharge_board=""
 deviceinfo_depthcharge_compression=""
 deviceinfo_dtb=""
@@ -167,6 +168,7 @@ validate_deviceinfo() {
 		deviceinfo_bootimg_pxa \
 		deviceinfo_bootimg_qcdt \
 		deviceinfo_bootimg_qcdt_type \
+		deviceinfo_create_prep_boot \
 		deviceinfo_flash_kernel_on_update \
 		deviceinfo_generate_bootimg \
 		deviceinfo_generate_depthcharge_image \
@@ -1119,13 +1121,19 @@ create_grub_config() {
 		_dtb_line="devicetree /$(basename "$deviceinfo_dtb").dtb"
 	fi
 
+	if [ "${deviceinfo_create_prep_boot}" = "true" ]; then
+		prefix="/boot"
+	else
+		prefix=""
+	fi
+
 	cat <<EOF > "$work_dir/grub.cfg"
 timeout=0
 
 menuentry "$distro_name" {
-	linux /$kernel_filename $(get_cmdline)
+	linux $prefix/$kernel_filename $(get_cmdline)
 	$(printf "%s" "$(list_ucode $output_dir)" | sed 's|^|initrd /|')
-	initrd /$initfs_filename
+	initrd $prefix/$initfs_filename
 	$_dtb_line
 }
 EOF
