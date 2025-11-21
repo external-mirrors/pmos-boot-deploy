@@ -744,9 +744,7 @@ create_bootimg() {
 	fi
 
 	local _header_v2=""
-	# XXX: Some deviceinfo files used custom_args for header v2 support before it was implemented
-	# here. We check if deviceinfo_bootimg_custom_args is set to avoid breaking those devices.
-	if [ "$deviceinfo_header_version" = "2" ] && [ -z "$deviceinfo_bootimg_custom_args" ]; then
+	if [ "$deviceinfo_header_version" = "2" ]; then
 		if [ -z "$deviceinfo_flash_offset_dtb" ]; then
 			log "ERROR: deviceinfo_header_version is 2, but"
 			log "'deviceinfo_flash_offset_dtb' is missing. Set it"
