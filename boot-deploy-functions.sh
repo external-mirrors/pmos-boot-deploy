@@ -4,6 +4,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 set -eu
 
+# Disable yash POSIXly-correct mode
+# shellcheck disable=SC3040
+set +o posixly-correct 2>/dev/null || true
+
 # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
 deviceinfo_append_dtb=""
 deviceinfo_arch=""
