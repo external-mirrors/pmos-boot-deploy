@@ -546,11 +546,11 @@ generate_bootloader_spec_conf() {
 	# 	- TODO: need to guarantee that distro_prefix is always going to be
 	# 	compliant with the BLS!
 	cat <<-EOF > "$work_dir/${distro_prefix}.conf"
-		title	$distro_name
+		title $distro_name
 		sort-key $distro_name
-		linux	$_kernel_filename
+		linux $_kernel_filename
 		$(printf "%s" "$(list_ucode $output_dir)" | sed 's|^|initrd\t|')
-		initrd	$initfs_filename
+		initrd $initfs_filename
 		options $(get_cmdline)
 		$_dtb_line
 	EOF
