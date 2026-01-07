@@ -27,6 +27,7 @@ unit tests:
     - adduser -D build
   script:
     - .ci/run.sh
+    - .ci/lib/testlib.sh tests
   artifacts:
     expire_in: 1 week
 
