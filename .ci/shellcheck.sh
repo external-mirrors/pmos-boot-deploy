@@ -15,6 +15,7 @@ sh_files="
 	./boot-deploy
 	./boot-deploy-functions.sh
 	./test_boot_deploy_functions.sh
+	./generate-kernel-cmdline
 	./tests/*.sh
 	./.ci/*.sh
 "

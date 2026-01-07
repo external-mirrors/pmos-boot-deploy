@@ -1,0 +1,182 @@
+#!/bin/sh
+# generate-kernel-cmdline - Generate kernel command line from layered config
+
+set -e
+
+# For testing / development
+CONFIG_ROOT="${CONFIG_ROOT:-}"
+
+# Storage for parameters (newline-separated)
+params=""
+
+# Log debug message to stderr
+# $1: message to log
+log() {
+    printf '%s\n' "$1" >&2
+}
+
+# Trim leading/trailing whitespace
+# $1: string to trim
+# Output: trimmed string to stdout
+trim() {
+    printf '%s' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+# Check if file is masked (empty or symlink to /dev/null)
+# $1: file path to check
+# Returns: 0 if masked, 1 if not masked
+is_masked() {
+    local file="$1"
+
+    [ -e "$file" ] || return 1
+
+    # Check if symlink to /dev/null
+    if [ -L "$file" ]; then
+        if [ "$(readlink "$file")" = "/dev/null" ]; then
+            return 0
+        fi
+    fi
+
+    # Check if empty regular file
+    if [ -f "$file" ] && [ ! -s "$file" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# Add parameter to global params list (only if not already present)
+# $1: parameter to add
+add_param() {
+    local param="$1"
+    local p
+
+    # Check if parameter already exists
+    IFS='
+'
+    for p in $params; do
+        if [ "$p" = "$param" ]; then
+            log "--- Parameter already exists, skipping: $param"
+            return 0
+        fi
+    done
+
+    log "--- Adding parameter: $param"
+    if [ -z "$params" ]; then
+        params="$param"
+    else
+        params="$params
+$param"
+    fi
+}
+
+# Remove parameter from global params list (exact match)
+# $1: parameter to remove
+remove_param() {
+    local to_remove="$1"
+    local new_params=""
+    local p
+    log "--- Removing parameter: $to_remove"
+
+    IFS='
+'
+    for p in $params; do
+        if [ "$p" != "$to_remove" ]; then
+            if [ -z "$new_params" ]; then
+                new_params="$p"
+            else
+                new_params="$new_params
+$p"
+            fi
+        fi
+    done
+
+    params="$new_params"
+}
+
+# Process a single config file
+# $1: path to config file
+# Exits with error on malformed syntax or read failure
+process_file() {
+    local file="$1"
+    local line line_num param
+
+    [ -f "$file" ] || return 0
+    log "-- Processing file: $file"
+
+    if [ ! -r "$file" ]; then
+        echo "Error: Cannot read file: $file" >&2
+        exit 1
+    fi
+
+    line_num=0
+    while IFS= read -r line || [ -n "$line" ]; do
+        line_num=$((line_num + 1))
+
+        line=$(trim "$line")
+
+        # Skip empty lines and comments
+        case "$line" in
+            ''|'#'*) continue ;;
+        esac
+
+        # Handle removal or addition
+        case "$line" in
+            -*)
+                param="${line#-}"
+                if [ -z "$param" ]; then
+                    echo "Error: Invalid removal directive '-' at $file:$line_num" >&2
+                    exit 1
+                fi
+                remove_param "$param"
+                ;;
+            *)
+                add_param "$line"
+                ;;
+        esac
+    done < "$file"
+}
+
+# Process all .conf files in a directory
+# $1: directory to process
+# $2: directory to check for masking files (empty string for no masking)
+process_directory() {
+    local dir="$1"
+    local mask_dir="$2"
+    local file basename
+
+    [ -d "$dir" ] || return 0
+    log "- Processing directory: $dir"
+
+    for file in "$dir"/*.conf; do
+        [ -e "$file" ] || continue
+
+        basename="${file##*/}"
+
+        if [ -n "$mask_dir" ] && is_masked "$mask_dir/$basename"; then
+            log "-- Masking $file (masked by $mask_dir/$basename)"
+            continue
+        fi
+
+        process_file "$file"
+    done
+}
+
+process_directory "$CONFIG_ROOT/usr/share/kernel-cmdline.d" "$CONFIG_ROOT/etc/kernel-cmdline.d"
+process_directory "$CONFIG_ROOT/etc/kernel-cmdline.d" ""
+
+# Output space-separated parameters
+if [ -n "$params" ]; then
+    first=1
+    IFS='
+'
+    for p in $params; do
+        if [ "$first" -eq 1 ]; then
+            printf '%s' "$p"
+            first=0
+        else
+            printf ' %s' "$p"
+        fi
+    done
+    printf '\n'
+fi
