@@ -1219,7 +1219,17 @@ parse_crypttab_entry() {
 }
 
 get_cmdline() {
-	local _ret="$deviceinfo_kernel_cmdline $deviceinfo_kernel_cmdline_append"
+	local _ret=""
+
+	# Check if old deviceinfo variables are set
+	if [ -n "$deviceinfo_kernel_cmdline" ]; then
+		# Use old method with deprecation warning
+		log "WARNING: deviceinfo_kernel_cmdline is deprecated and will be removed in a future version."
+		log "WARNING: Please migrate to /usr/share/kernel-cmdline.d/ and /etc/kernel-cmdline.d/ configuration files."
+		_ret="$deviceinfo_kernel_cmdline $deviceinfo_kernel_cmdline_append"
+	else
+		_ret="$(generate-kernel-cmdline)"
+	fi
 
 	local _boot_uuid=""
 	local _root_uuid=""
