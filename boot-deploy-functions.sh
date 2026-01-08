@@ -1219,7 +1219,19 @@ parse_crypttab_entry() {
 }
 
 get_cmdline() {
-	local _ret="$deviceinfo_kernel_cmdline $deviceinfo_kernel_cmdline_append"
+	local _ret=""
+
+	# Use old deviceinfo variables if they are set, but warn if the "append" one is
+	# set since that was done by a system admin (i.e. not in distro packaging.)
+	if [ -n "$deviceinfo_kernel_cmdline" ]; then
+		if [ -n "$deviceinfo_kernel_cmdline_append" ]; then
+			log "WARNING: deviceinfo_kernel_cmdline_append support is deprecated and will be removed in a future version."
+			log "WARNING: Please migrate to /etc/kernel-cmdline.d/ configuration files."
+		fi
+		_ret="$deviceinfo_kernel_cmdline $deviceinfo_kernel_cmdline_append"
+	else
+		_ret="$(generate-kernel-cmdline)"
+	fi
 
 	local _boot_uuid=""
 	local _root_uuid=""
