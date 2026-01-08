@@ -15,12 +15,12 @@ shift
 tool="$srcdir/generate-kernel-cmdline"
 
 ### Test 1 ###
-start_test "Basic add params, simple and with values"
+start_test "Override params"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d etc/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d etc/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-test.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-test.conf <<EOF
 quiet
 console=tty0
 EOF
@@ -30,7 +30,7 @@ loglevel=4
 EOF
 
 output=$(CONFIG_ROOT="$(pwd)" "$tool")
-expected="quiet console=tty0 loglevel=4"
+expected="loglevel=4"
 
 assert_strequal "$output" "$expected"
 
@@ -41,15 +41,15 @@ end_test
 start_test "Basic remove, exact match"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-base.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-base.conf <<EOF
 quiet
 console=tty0
 loglevel=4
 EOF
 
-cat > usr/share/kernel-cmdline.d/01-remove.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/01-remove.conf <<EOF
 -quiet
 -loglevel=4
 EOF
@@ -66,14 +66,14 @@ end_test
 start_test "Remove nonexistent param, noop"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-base.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-base.conf <<EOF
 quiet
 console=tty0
 EOF
 
-cat > usr/share/kernel-cmdline.d/01-remove.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/01-remove.conf <<EOF
 -nonexistent
 -also=nothere
 EOF
@@ -90,14 +90,14 @@ end_test
 start_test "Processing order across directories"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d etc/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d etc/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-base.conf <<EOF
-from_usr_share
+cat > usr/lib/kernel-cmdline.d/00-base.conf <<EOF
+from_usr_lib
 EOF
 
-cat > usr/share/kernel-cmdline.d/50-pkg.conf <<EOF
-from_usr_share_50
+cat > usr/lib/kernel-cmdline.d/50-pkg.conf <<EOF
+from_usr_lib_50
 EOF
 
 cat > etc/kernel-cmdline.d/00-user.conf <<EOF
@@ -109,7 +109,7 @@ from_etc_99
 EOF
 
 output=$(CONFIG_ROOT="$(pwd)" "$tool")
-expected="from_usr_share from_usr_share_50 from_etc from_etc_99"
+expected="from_usr_lib from_etc from_usr_lib_50 from_etc_99"
 
 assert_strequal "$output" "$expected"
 
@@ -120,14 +120,14 @@ end_test
 start_test "Same param from multiple configs, no duplicates"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-base.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-base.conf <<EOF
 console=tty0
 quiet
 EOF
 
-cat > usr/share/kernel-cmdline.d/50-pkg.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/50-pkg.conf <<EOF
 console=tty0
 loglevel=4
 EOF
@@ -144,9 +144,9 @@ end_test
 start_test "Removing exact match"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d etc/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d etc/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-base.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-base.conf <<EOF
 console=tty0
 console=ttyMSM0,115200
 quiet
@@ -179,13 +179,13 @@ end_test
 start_test "Masking with empty file"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d etc/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d etc/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-base.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-base.conf <<EOF
 from_base
 EOF
 
-cat > usr/share/kernel-cmdline.d/10-pkg.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/10-pkg.conf <<EOF
 splash
 EOF
 
@@ -203,13 +203,13 @@ end_test
 start_test "Masking with symlink to /dev/null"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d etc/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d etc/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-base.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-base.conf <<EOF
 from_base
 EOF
 
-cat > usr/share/kernel-cmdline.d/10-pkg.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/10-pkg.conf <<EOF
 splash
 EOF
 
@@ -227,9 +227,9 @@ end_test
 start_test "Ignore comments and empty lines"
 create_test_root
 
-mkdir -p usr/share/kernel-cmdline.d
+mkdir -p usr/lib/kernel-cmdline.d
 
-cat > usr/share/kernel-cmdline.d/00-test.conf <<EOF
+cat > usr/lib/kernel-cmdline.d/00-test.conf <<EOF
 # This is a comment
 quiet
 
