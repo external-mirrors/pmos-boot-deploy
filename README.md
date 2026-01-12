@@ -21,6 +21,18 @@ by boot-deploy, some of them are used internally by postmarketOS. For an up to
 date list of variables that boot-deploy can use at runtime, see the top of the
 `boot-deploy-functions.sh` file.
 
+### Kernel Command-line
+
+boot-deploy uses
+[generate-kernel-cmdline](https://gitlab.postmarketos.org/postmarketOS/generate-kernel-cmdline)
+to generate the kernel command line from layered configuration files. This
+allows distros to provide defaults, packages to add specific
+parameters (e.g. for specific devices), and users to override settings without modifying device or distro
+configuration.
+
+For details on how to configure kernel command line parameters, see `man 5
+generate-kernel-cmdline`.
+
 ### OS-level Customization
 
 `boot-deploy` requires a file at `/usr/share/boot-deploy/os-customization`,
