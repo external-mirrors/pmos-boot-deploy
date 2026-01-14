@@ -5,8 +5,12 @@
 set -eu
 
 # Disable yash POSIXly-correct mode
-# shellcheck disable=SC3040
-set +o posixly-correct 2>/dev/null || true
+# Dash can't handle 'set +o posixly-correct' so we check first
+_set_code="$(set -o | grep posixly-correct2>/dev/null || echo $?)"
+if [ "$_set_code" = 0 ]; then
+	# shellcheck disable=SC3040
+	set +o posixly-correct 2>/dev/null
+fi
 
 # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
 deviceinfo_append_dtb=""
