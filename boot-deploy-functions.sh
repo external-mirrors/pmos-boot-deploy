@@ -891,6 +891,11 @@ flash_updated_boot_parts() {
 		log_arrow "Not flashing boot in chroot"
 		return 0
 	fi
+	# Flash the boot image IFF not booting with EFI
+	if [ -e /sys/firmware/efi/efivars ]; then
+		log_arrow "Not flashing boot when booting with EFI"
+		return 0
+	fi
 
 	log_arrow "Flashing boot image"
 
@@ -900,12 +905,7 @@ flash_updated_boot_parts() {
 			vendor_flash_android_bootimg "${deviceinfo_flash_fastboot_partition_kernel:-boot}" "${deviceinfo_flash_fastboot_partition_kernel:-vendor_boot}"
 			;;
 		fastboot-bootpart)
-			# Flash the boot image IFF not booting with EFI
-			if ! [ -e /sys/firmware/efi ]; then
-				vendor_flash_android_bootimg boot vendor_boot
-			else
-				echo "SKIP: booting with EFI"
-			fi
+			vendor_flash_android_bootimg boot vendor_boot
 			;;
 		heimdall-bootimg)
 			# TODO: check if there is a different default name for vendor_boot
