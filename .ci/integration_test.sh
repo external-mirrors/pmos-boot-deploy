@@ -272,10 +272,10 @@ validate_systemd_boot() {
 	# Arch-specific checks
 	case "$deviceinfo_arch" in
 		aarch64)
-			assert_exists "boot/efi/boot/bootaa64.efi" ;;
+			assert_exists "boot/EFI/BOOT/BOOTAA64.EFI" ;;
 		x86_64)
-			assert_exists "boot/efi/boot/bootia32.efi"
-			assert_exists "boot/efi/boot/bootx64.efi"
+			assert_exists "boot/EFI/BOOT/BOOTIA32.EFI"
+			assert_exists "boot/EFI/BOOT/BOOTX64.EFI"
 
 			local _found=false
 			for entry in $(parse_conf_entry "initrd" "$sd_conf"); do
@@ -292,9 +292,9 @@ validate_systemd_boot() {
 			fi
 			;;
 		armv7)
-			assert_exists "boot/efi/boot/bootarm.efi" ;;
+			assert_exists "boot/EFI/BOOT/BOOTARM.EFI" ;;
 		riscv64)
-			assert_exists "boot/efi/boot/bootriscv64.efi" ;;
+			assert_exists "boot/EFI/BOOT/BOOTRISCV64.EFI" ;;
 		*)
 			echo "ERROR: unsupported CPU arch: $deviceinfo_arch"
 			exit 1

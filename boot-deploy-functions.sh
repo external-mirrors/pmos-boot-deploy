@@ -585,13 +585,14 @@ add_systemd_boot() {
 		for _efi_app in "$_basedir"/*.efi; do
 			log_arrow "systemd-boot: found '$_efi_app'"
 			# remove gummi* and systemd-* prefixes
-			local _fname
+			local _fname _target
 			_fname="$(basename "$_efi_app")"
 			_fname="${_fname##gummi}"
 			_fname="${_fname##systemd-}"
+			_target="$(echo "$_fname" | tr '[:lower:]' '[:upper:]')"
 			_found="true"
 			copy "$_efi_app" "$work_dir/$_fname"
-			additional_files="$additional_files $_fname:efi/boot/$_fname"
+			additional_files="$additional_files $_fname:EFI/BOOT/$_target"
 		done
 	done
 	if [ "$_found" = "false" ]; then
