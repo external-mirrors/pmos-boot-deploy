@@ -541,6 +541,11 @@ generate_bootloader_spec_conf() {
 	# EFI decompressor. It's possible that "vmlinuz" will exist but just be
 	# the regular GZIP compressed kernel and won't actually boot with
 	# systemd-boot
+	# Some kernels use linux.efi as the name instead, that was handled by
+	# mkinitfs before, but it's better to handle it here
+	if [ -e "${output_dir}/linux.efi" ]; then
+		_kernel_filename="linux.efi"
+	fi
 	if [ -e "${output_dir}/${kernel_filename}.efi" ]; then
 		_kernel_filename="${kernel_filename}.efi"
 	fi
