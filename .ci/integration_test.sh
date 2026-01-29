@@ -18,7 +18,6 @@ distro_prefix=""
 deviceinfo_bootimg_pxa=""
 deviceinfo_generate_extlinux_config=""
 deviceinfo_generate_bootimg=""
-deviceinfo_generate_systemd_boot=""
 # TODO: Implement grub config validation
 #deviceinfo_generate_grub_config=""
 deviceinfo_append_dtb=""
@@ -246,9 +245,7 @@ parse_conf_entry() {
 validate_systemd_boot() {
 	local sd_dtb=""
 	local sd_kernel=""
-	if [ -z "$deviceinfo_generate_systemd_boot" ]; then
-		return
-	fi
+	[ -z "$(list -I systemd-boot)" ] && return
 
 	local sd_conf="boot/loader/entries/${distro_prefix}.conf"
 	assert_exists "$sd_conf"

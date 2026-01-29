@@ -50,7 +50,6 @@ deviceinfo_generate_extlinux_config=""
 deviceinfo_generate_grub_config=""
 deviceinfo_generate_uboot_fit_images=""
 deviceinfo_generate_legacy_uboot_initfs=""
-deviceinfo_generate_systemd_boot=""
 deviceinfo_mkinitfs_postprocess=""
 deviceinfo_kernel_cmdline=""
 deviceinfo_kernel_cmdline_append=""
@@ -182,7 +181,6 @@ validate_deviceinfo() {
 		deviceinfo_generate_depthcharge_image \
 		deviceinfo_generate_extlinux_config \
 		deviceinfo_generate_grub_config \
-		deviceinfo_generate_systemd_boot \
 		deviceinfo_generate_legacy_uboot_initfs \
 		deviceinfo_generate_uboot_fit_images \
 		deviceinfo_header_version \
@@ -569,11 +567,6 @@ generate_bootloader_spec_conf() {
 # Add support for systemd-boot (and/or gummiboot) by generating necessary
 # config and adding dependencies to $additional_files.
 add_systemd_boot() {
-	[ "$deviceinfo_generate_systemd_boot" = "true" ] || return 0
-	log_arrow "systemd-boot: adding support"
-
-	generate_bootloader_spec_conf
-
 	local _found="false"
 	# Note: the order of these directories is important! The intention is to
 	# prefer systemd-boot over gummiboot, in case both happen to be installed.
@@ -597,9 +590,11 @@ add_systemd_boot() {
 		done
 	done
 	if [ "$_found" = "false" ]; then
-		log "ERROR: no EFI bootloader app found for systemd or gummiboot"
-		exit 1
+		log "systemd-boot: OS loader EFI app not found, skipping"
+		return 0
 	fi
+
+	generate_bootloader_spec_conf
 
 	local _driver
 
