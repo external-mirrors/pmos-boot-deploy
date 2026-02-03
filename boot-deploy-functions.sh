@@ -610,7 +610,8 @@ add_systemd_boot() {
 		local _fname
 		_fname="$(basename "$_driver")"
 		copy "$_driver" "$work_dir/$_fname"
-		additional_files="$additional_files $_fname:efi/systemd/drivers/$_fname"
+		_target="$(echo "$_fname" | tr '[:lower:]' '[:upper:]')"
+		additional_files="$additional_files $_fname:EFI/SYSTEMD/DRIVERS/$_target"
 	done
 }
 
