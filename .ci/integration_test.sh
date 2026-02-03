@@ -245,7 +245,7 @@ parse_conf_entry() {
 validate_systemd_boot() {
 	local sd_dtb=""
 	local sd_kernel=""
-	[ -z "$(list -I systemd-boot)" ] && return
+	[ -z "$(apk list -I systemd-boot)" ] && return
 
 	local sd_conf="boot/loader/entries/${distro_prefix}.conf"
 	assert_exists "$sd_conf"
@@ -272,7 +272,9 @@ validate_systemd_boot() {
 	# Arch-specific checks
 	case "$deviceinfo_arch" in
 		aarch64)
-			assert_exists "boot/EFI/BOOT/BOOTAA64.EFI" ;;
+			assert_exists "boot/EFI/BOOT/BOOTAA64.EFI"
+			[ -n "$(apk list -I dtbloader)" ] && assert_exists "boot/EFI/SYSTEMD/DRIVERS/DTBLOADERAA64.EFI"
+			;;
 		x86_64)
 			assert_exists "boot/EFI/BOOT/BOOTIA32.EFI"
 			assert_exists "boot/EFI/BOOT/BOOTX64.EFI"
