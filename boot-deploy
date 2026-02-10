@@ -26,6 +26,7 @@ fi
 . "$functions_file"
 
 get_options "$@"
+get_kernel
 source_deviceinfo
 source_boot_deploy_config
 

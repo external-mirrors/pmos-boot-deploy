@@ -76,7 +76,7 @@ usage() {
 	%s -i <file> -k <file> -d <path> [-o <path>] [files...]
 Where:
 	-i  filename of the initfs in the input directory
-	-k  filename of the kernel in the input directory
+	-k  filename of the kernel in the input directory (DEPRECATED: do not use)
 	-d  path to directory containing input initfs, kernel
 	-o  path to output directory {default: /boot}
 	-c  path to local deviceinfo {default: source /etc/deviceinfo after /usr/share/deviceinfo/deviceinfo}
@@ -89,7 +89,8 @@ get_options() {
 	do
 		case $opt in
 			k)
-				kernel_filename="$OPTARG";;
+				log "WARNING: -k option is deprecated and no longer used. It will be removed in a future version."
+				;;
 			i)
 				initfs_filename="$OPTARG";;
 			d)
@@ -106,10 +107,6 @@ get_options() {
 	shift $((OPTIND - 1))
 	additional_files=$*
 
-	if [ -z "$kernel_filename" ]; then
-		usage
-		exit 1
-	fi
 	if [ -z "$initfs_filename" ]; then
 		usage
 		exit 1
@@ -124,12 +121,39 @@ get_options() {
 		exit 1
 	fi
 
-	for f in "$kernel_filename" "$initfs_filename" $additional_files; do
+	for f in "$initfs_filename" $additional_files; do
 		if [ ! -f "$work_dir/$f" ]; then
 			log "File does not exist: $work_dir/$f"
 			exit 1
 		fi
 	done
+}
+
+get_kernel() {
+	local kernel
+	# Find first vmlinuz* file, skipping boot-deploy generated variants
+	for kernel in "$output_dir"/vmlinuz*; do
+		if [ -f "$kernel" ]; then
+			# Skip kernels with suffixes added by boot-deploy
+			case "$kernel" in
+				*-dtb|*-mtk) continue ;;
+			esac
+			kernel_filename="$(basename "$kernel")"
+			break
+		fi
+	done
+
+	# Fallback to linux.efi if no vmlinuz* found
+	if [ -z "$kernel_filename" ] && [ -f "$output_dir/linux.efi" ]; then
+		kernel_filename="linux.efi"
+	fi
+
+	if [ -z "$kernel_filename" ]; then
+		log "ERROR: No kernel found in $output_dir (checked: vmlinuz*, linux.efi)"
+		exit 1
+	fi
+
+	cp "$output_dir/$kernel_filename" "$work_dir/$kernel_filename"
 }
 
 # Return the free space (bytes) for the mount point that contains the given
