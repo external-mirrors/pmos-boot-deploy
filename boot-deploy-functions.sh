@@ -1266,6 +1266,7 @@ get_cmdline() {
 	local _boot_uuid=""
 	local _root_uuid=""
 	local _root_opts=""
+	local _tmp_root_uuid=""
 
 	if [ -f "/etc/fstab" ]; then
 		_boot_uuid=$(parse_fstab_entry "/boot" 1)
@@ -1274,7 +1275,10 @@ get_cmdline() {
 	fi
 
 	if [ -f "/etc/crypttab" ]; then
-		_root_uuid=$(parse_crypttab_entry "$crypttab_entry")
+		_tmp_root_uuid=$(parse_crypttab_entry "$crypttab_entry")
+		if [ -n "$_tmp_root_uuid" ]; then
+			_root_uuid="$_tmp_root_uuid"
+		fi
 	fi
 
 	# When appropriate fstab entry does not exist, cmdline will not
