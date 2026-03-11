@@ -112,7 +112,6 @@ echo "## Wrapper script for boot-deploy ##"
 echo "==> args: \$orig_args"
 
 # getopts / get_options set the following 'global' variables:
-kernel_filename=
 initfs_filename=
 work_dir=
 output_dir="/boot"
@@ -121,8 +120,6 @@ local_deviceinfo=""
 while getopts k:i:d:o:c: opt
 do
 	case \$opt in
-		k)
-			kernel_filename="\$OPTARG";;
 		i)
 			initfs_filename="\$OPTARG";;
 		d)
@@ -145,13 +142,15 @@ ln -s "\$work_dir.copy" "\$work_dir"
 
 # Boot-deploy gets run twice so clear the args file
 echo "" > /tmp/boot-deploy.args
-echo "kernel_filename=\$kernel_filename" >> "/tmp/boot-deploy.args"
 echo "initfs_filename=\$initfs_filename" >> "/tmp/boot-deploy.args"
 echo "work_dir=\$work_dir.copy" >> "/tmp/boot-deploy.args"
 echo "output_dir=\$output_dir" >> "/tmp/boot-deploy.args"
 echo "local_deviceinfo=\$local_deviceinfo" >> "/tmp/boot-deploy.args"
 
-exec /usr/bin/boot-deploy.real \$orig_args
+/usr/bin/boot-deploy.real \$orig_args
+. /usr/share/boot-deploy/boot-deploy-functions.sh
+get_kernel
+echo "kernel_filename=\$kernel_filename" >> "/tmp/boot-deploy.args"
 EOF
 chmod +x "boot-deploy-wrapper"
 sudo mv "boot-deploy-wrapper" "$rootfs/usr/bin/boot-deploy"
