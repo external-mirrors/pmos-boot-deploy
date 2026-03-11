@@ -34,12 +34,13 @@ assert_exists() {
 		exit 1
 	fi
 
-	if [ ! -e "$1" ]; then
+	# shellcheck disable=SC2086
+	_files=$(ls -d -- $1 2>/dev/null)
+	if [ -z "$_files" ]; then
 		echo "    ❌ $1 NOT found"
+		assert_failed="true"
 		return
 	fi
-
-	_files="$(find . -wholename "$1")"
 
 	# And check it's not empty!
 	for _file in $_files; do
