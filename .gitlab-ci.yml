@@ -98,7 +98,7 @@ test-ci-tron-qemu-amd64:
     - job: 'build-ci-tron-qemu-amd64'
       artifacts: false
   variables:
-    CI_TRON_KERNEL__URL: "glartifact://build-ci-tron-qemu-amd64/${CI_TRON__PMB_EXPORT_PATH}/vmlinuz-${KERNEL_VARIANT}"
+    CI_TRON_KERNEL__URL: "glartifact://build-ci-tron-qemu-amd64/${CI_TRON__PMB_EXPORT_PATH}/vmlinuz"
     CI_TRON_INITRAMFS__INITRAMFS__URL: "glartifact://build-ci-tron-qemu-amd64/${CI_TRON__PMB_EXPORT_PATH}/initramfs"
     CI_TRON_KERNEL_CMDLINE__DEVICEINFO: 'console=tty1 console=ttyS0,115200 PMOS_FORCE_PARTITION_RESIZE'
     DEVICE_NAME: qemu-amd64
