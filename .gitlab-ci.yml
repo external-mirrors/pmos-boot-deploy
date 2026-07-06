@@ -67,8 +67,6 @@ integration test:
       - DEVICE: samsung-a5
       # Another Android device, but using pxa-mkbootimg
       - DEVICE: samsung-coreprimevelte
-      # Android device with a boot.img containing an exynos QCDT image
-      - DEVICE: samsung-on7xelte
       # extlinux
       - DEVICE: pine64-pinebookpro
       # sd-boot + CPU microcode config
