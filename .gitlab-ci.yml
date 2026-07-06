@@ -18,7 +18,7 @@ stages:
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == 'master'
+    - if: $CI_COMMIT_BRANCH == 'main'
     - if: '$CI_COMMIT_TAG != null'
 
 unit tests:
@@ -34,11 +34,11 @@ integration test:
   stage: integration tests
   before_script:
     - apk add curl android-tools file
-    - apk add --allow-untrusted -X http://mirror.postmarketos.org/postmarketos/master/ mkbootimg-osm0sis pxa-mkbootimg
+    - apk add --allow-untrusted -X http://mirror.postmarketos.org/postmarketos/main/ mkbootimg-osm0sis pxa-mkbootimg
     # Force IPv4 for gitlab.postmarketos.org until it supports IPv6 too, OSUOSL is
     # working on it (infra#195)
     - "echo '140.211.167.182 gitlab.postmarketos.org' >> /etc/hosts"
-    - curl -4fsSL "https://gitlab.postmarketos.org/postmarketOS/ci-common/-/raw/master/install_pmbootstrap.sh" | sh
+    - curl -4fsSL "https://gitlab.postmarketos.org/postmarketOS/ci-common/-/raw/main/install_pmbootstrap.sh" | sh
     - su pmos -c "pmbootstrap config device ${DEVICE}"
     - su pmos -c "pmbootstrap config ui none"
   script:
