@@ -12,6 +12,9 @@ if [ "$_set_code" = 0 ]; then
 	set +o posixly-correct 2>/dev/null
 fi
 
+# Source variables from os-release
+. /usr/lib/os-release
+
 # Declare used deviceinfo variables to pass shellcheck (order alphabetically)
 deviceinfo_append_dtb=""
 deviceinfo_arch=""
@@ -262,9 +265,14 @@ source_boot_deploy_config() {
 		log "ERROR: crypttab_entry from $_file is not set"
 		exit 1
 	fi
+	# Use legacy distro_name first
 	if [ -z "$distro_name" ]; then
-		log "ERROR: distro_name from $_file is not set"
-		exit 1
+		if [ -z "$NAME" ]; then
+			log "ERROR: NAME is not in /usr/lib/os-release. Is your system broken?"
+			exit 1
+		fi
+		# Set distro_name to the value from /usr/lib/os-release
+		distro_name="$NAME"
 	fi
 	if [ -z "$distro_prefix" ]; then
 		log "ERROR: distro_prefix from $_file is not set"
