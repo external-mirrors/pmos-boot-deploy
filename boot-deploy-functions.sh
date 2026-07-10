@@ -593,17 +593,18 @@ generate_bootloader_spec_conf() {
 	additional_files="$additional_files ${distro_prefix}.conf:loader/entries/${distro_prefix}.conf"
 }
 
-# Add support for systemd-boot (and/or gummiboot) by generating necessary
-# config and adding dependencies to $additional_files.
+# Add support for systemd-boot (and/or gummiboot) or powervm-boot by generating
+# necessary config and adding dependencies to $additional_files.
 add_systemd_boot() {
-	local _found="false"
+	local _sd_boot_found="false"
+	local _powervm_boot_found="false"
 	# Note: the order of these directories is important! The intention is to
 	# prefer systemd-boot over gummiboot, in case both happen to be installed.
 	for _basedir in /usr/lib/systemd/boot/efi /usr/lib/gummiboot; do
 		[ ! -d "$_basedir" ] && continue
 		# only copy app(s) from the first base directory found, to prevent the
 		# second set of apps found from overwriting the first
-		[ "$_found" = "true" ] && break
+		[ "$_sd_boot_found" = "true" ] && break
 		# Copy multiple efi apps if they exist, to allow supporting multiple
 		# archs (e.g. 32-bit EFI on x86_64)
 		for _efi_app in "$_basedir"/*.efi; do
@@ -614,17 +615,26 @@ add_systemd_boot() {
 			_fname="${_fname##gummi}"
 			_fname="${_fname##systemd-}"
 			_target="$(echo "$_fname" | tr '[:lower:]' '[:upper:]')"
-			_found="true"
+			_sd_boot_found="true"
 			copy "$_efi_app" "$work_dir/$_fname"
 			additional_files="$additional_files $_fname:EFI/BOOT/$_target"
 		done
 	done
-	if [ "$_found" = "false" ]; then
-		log "systemd-boot: OS loader EFI app not found, skipping"
+
+	[ -e /usr/lib/powervm-boot ] && _powervm_boot_found="true"
+
+	if [ "$_sd_boot_found" = "false" ] && [ "$_powervm_boot_found" = "false" ]; then
+		log "systemd-boot: systemd-boot EFI app or powervm-boot not found, skipping"
 		return 0
 	fi
 
 	generate_bootloader_spec_conf
+
+	if [ "$_powervm_boot_found" = "true" ]; then
+		# powervm-boot only uses the same configuration format as systemd-boot, it does
+		# not involve anything with EFI
+		return 0
+	fi
 
 	local _driver
 
