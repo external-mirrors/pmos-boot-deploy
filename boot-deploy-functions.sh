@@ -989,11 +989,11 @@ vendor_flash_android_bootimg() {
 	dd if="$work_dir/$bootimg_filename" of="$boot_partition" bs=1M
 
 	if { [ "$deviceinfo_header_version" = "3" ] || [ "$deviceinfo_header_version" = "4" ]; } && [ -e "$work_dir/vendor_boot.img" ]; then
+		vendor_boot_partition=$(findfs PARTLABEL="${vendor_partlabel}${boot_part_suffix}")
 		if ! check_image_size "$work_dir/vendor_boot.img" "$vendor_boot_partition"; then
 			log_boot_partition_too_small_suggestion
 			exit 1
 		fi
-		vendor_boot_partition=$(findfs PARTLABEL="${vendor_partlabel}${boot_part_suffix}")
 		log "Flashing vendor_boot.img to '${vendor_partlabel}${boot_part_suffix}'"
 		dd if="$work_dir/vendor_boot.img" of="$vendor_boot_partition" bs=1M
 	fi
