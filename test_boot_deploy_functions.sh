@@ -153,7 +153,96 @@ test_extlinux_config() {
 		_ret=1
 		echo "test_extlinux_config (no cmdline + 1 dtb): fail"
 	else
-		echo "test_extlinux_config (no cmdline + 1 dtb)): pass"
+		echo "test_extlinux_config (no cmdline + 1 dtb): pass"
+	fi
+
+	return $_ret
+}
+
+test_uboot_env() {
+	work_dir="./"
+	# shellcheck disable=SC2034
+	deviceinfo_generate_uboot_env="true"
+	# shellcheck disable=SC2034
+	distro_name="postmarketOS"
+	# shellcheck disable=SC2034
+	kernel_filename="vmlinuz"
+	# shellcheck disable=SC2034
+	initfs_filename="initramfs"
+	# shellcheck disable=SC2034
+	additional_files=""
+
+	local _ret=0
+	local _result
+	local _expected_result
+
+	# A dumb replacement for find_dtb
+	unset -f find_dtb
+	find_dtb() {
+		echo "$deviceinfo_dtb"
+	}
+
+	# test 1: no cmdline and no devicetree
+	unset -f get_cmdline
+	get_cmdline() {
+		echo " "
+	}
+
+	# shellcheck disable=SC2034
+	deviceinfo_dtb=""
+
+	create_uboot_env
+
+	_expected_result="$(cat environ-examples/environ.txt.1)"
+	_result="$(cat $work_dir/environ.txt)"
+
+	if [ ! "$_result" = "$_expected_result" ]; then
+		_ret=1
+		echo "test_uboot_env (no cmdline + no dtb): fail"
+	else
+		echo "test_uboot_env (no cmdline + no dtb): pass"
+	fi
+
+	# test 2: cmdline and no devicetree
+	unset -f get_cmdline
+	get_cmdline() {
+		echo "test test test test"
+	}
+
+	# shellcheck disable=SC2034
+	deviceinfo_dtb=""
+
+	create_uboot_env
+
+	_expected_result="$(cat environ-examples/environ.txt.2)"
+	_result="$(cat $work_dir/environ.txt)"
+
+	if [ ! "$_result" = "$_expected_result" ]; then
+		_ret=1
+		echo "test_uboot_env (cmdline + no dtb): fail"
+	else
+		echo "test_uboot_env (cmdline + no dtb): pass"
+	fi
+
+	# test 3: cmdline and devicetree
+	unset -f get_cmdline
+	get_cmdline() {
+		echo "test test test test"
+	}
+
+	# shellcheck disable=SC2034
+	deviceinfo_dtb="amlogic/meson-gxbb-kii-pro"
+
+	create_uboot_env
+
+	_expected_result="$(cat environ-examples/environ.txt.3)"
+	_result="$(cat $work_dir/environ.txt)"
+
+	if [ ! "$_result" = "$_expected_result" ]; then
+		_ret=1
+		echo "test_uboot_env (cmdline + dtb): fail"
+	else
+		echo "test_uboot_env (cmdline + dtb): pass"
 	fi
 
 	return $_ret
@@ -163,6 +252,7 @@ test_get_size_of_files
 test_copy_files
 test_invalid_dtb
 test_extlinux_config
+test_uboot_env
 
 rm -rf "$wdir"
 trap - INT EXIT TERM
